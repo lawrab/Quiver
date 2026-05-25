@@ -108,9 +108,23 @@ local function PopulateMenu(menu)
         end
     end
 
-    -- Update trigger button state
+    -- Pre-position buttons at their open layout and show them invisible.
+    -- SetPoint is only legal outside combat; PopulateMenu is always called
+    -- outside combat (guarded by RebuildAll). Toggle/HideAll then only need
+    -- SetAlpha, which is not protected and works during combat lockdown.
     local triggerBtn = _G[menu.triggerName]
     if not triggerBtn then return end
+
+    for i, b in ipairs(menu.buttons) do
+        b:ClearAllPoints()
+        if menu.growLeft then
+            b:SetPoint("RIGHT", triggerBtn, "LEFT", -6 - (i - 1) * BUTTON_SPACING, 0)
+        else
+            b:SetPoint("LEFT", triggerBtn, "RIGHT", 6 + (i - 1) * BUTTON_SPACING, 0)
+        end
+        b:Show()
+        b:SetAlpha(0)
+    end
 
     if #menu.buttons == 0 then
         triggerBtn:SetAlpha(0.7)
@@ -174,17 +188,8 @@ function Menus:Toggle(menuName)
     local menu = self.menus[menuName]
     if not menu or #menu.buttons == 0 then return end
 
-    local triggerBtn = _G[menu.triggerName]
-    if not triggerBtn then return end
-
-    for i, b in ipairs(menu.buttons) do
-        b:ClearAllPoints()
-        if menu.growLeft then
-            b:SetPoint("RIGHT", triggerBtn, "LEFT", -6 - (i - 1) * BUTTON_SPACING, 0)
-        else
-            b:SetPoint("LEFT", triggerBtn, "RIGHT", 6 + (i - 1) * BUTTON_SPACING, 0)
-        end
-        b:Show()
+    for _, b in ipairs(menu.buttons) do
+        b:SetAlpha(1)
     end
     activeMenu = menuName
 end
@@ -192,7 +197,7 @@ end
 function Menus:HideAll()
     for _, menu in pairs(self.menus) do
         for _, b in ipairs(menu.buttons) do
-            b:Hide()
+            b:SetAlpha(0)
         end
     end
     activeMenu = nil
