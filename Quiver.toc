@@ -5,7 +5,6 @@
 ## Version: 0.1.0
 ## DefaultState: Enabled
 ## SavedVariables: QuiverDB
-## SavedVariablesPerCharacter: QuiverCharDB
 
 # Libraries
 Libs\LibStub\LibStub.lua

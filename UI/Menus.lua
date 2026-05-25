@@ -19,7 +19,7 @@ end
 local function MakeMenuFrame(btnName, growLeft)
     local f = CreateFrame("Frame", nil, UIParent)
     f:SetFrameStrata("HIGH")
-    f:SetHeight(BUTTON_SIZE + 20)
+    f:SetHeight(BUTTON_SIZE)
     f:SetWidth(1)
     f:Hide()
     f.growLeft = growLeft
@@ -43,13 +43,13 @@ local function MakeActionButton(parent, label, icon, onClick, index)
     b:SetNormalTexture(icon or "Interface\\Buttons\\UI-Quickslot2")
     b:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress")
     b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
-    local cd = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
-    cd:SetAllPoints(b)
-    b.cooldown = cd
-    local text = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    text:SetPoint("BOTTOM", b, "BOTTOM", 0, -2)
-    text:SetText(label)
     b:SetScript("OnClick", onClick)
+    b:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(label)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
     return b
 end
 
@@ -223,4 +223,5 @@ function Menus:Initialize()
     self:RebuildAll()
 
     Quiver:RegisterEvent("SPELLS_CHANGED", function() Menus:RebuildAll() end)
+    Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() Menus:RebuildAll() end)
 end
