@@ -66,8 +66,8 @@ local function MakeActionButton(label, icon, spellCast)
             macroText = "/cast " .. spellCast
         end
         if macroText then
-            b:SetAttribute("type2", "macro")
-            b:SetAttribute("macrotext2", macroText)
+            b:SetAttribute("type", "macro")
+            b:SetAttribute("macrotext", macroText)
         end
     end
     -- Match ActionButtonUseKeyDown CVar so click fires at the right time
@@ -105,10 +105,8 @@ local function PopulateMenu(menu)
             end
             local b = MakeActionButton(entry.label, icon, castTarget)
             local capturedEntry = entry
-            b:SetScript("PostClick", function(_, button)
-                if button == "LeftButton" then
-                    Menus:SelectEntry(menu, capturedEntry)
-                end
+            b:SetScript("PostClick", function()
+                Menus:SelectEntry(menu, capturedEntry)
             end)
             table.insert(menu.buttons, b)
         end
