@@ -107,8 +107,10 @@ local function PopulateMenu(menu)
             end
             local b = MakeActionButton(entry.label, icon, castTarget)
             local capturedEntry = entry
-            b:SetScript("PostClick", function()
-                Menus:SelectEntry(menu, capturedEntry)
+            b:SetScript("PostClick", function(_, button)
+                if button == "LeftButton" then
+                    Menus:SelectEntry(menu, capturedEntry)
+                end
             end)
             table.insert(menu.buttons, b)
         end
