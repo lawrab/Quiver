@@ -159,8 +159,6 @@ local function PopulateMenu(menu)
         end)
         triggerBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     else
-        triggerBtn:SetAlpha(1.0)
-
         -- Validate stored selection — spell may have become unknown
         if menu.selected and menu.selected.spell and not IsSpellKnown(menu.selected.spell) then
             menu.selected = nil
@@ -207,9 +205,36 @@ local function PopulateMenu(menu)
                 Quiver.UI.Menus:HideAll()
             end
         end)
-        triggerBtn:SetScript("OnEnter", nil)
-        triggerBtn:SetScript("OnLeave", nil)
+        UpdateTriggerReadiness(menu)
     end
+end
+
+local function UpdateTriggerReadiness(menu)
+    local triggerBtn = _G[menu.triggerName]
+    if not triggerBtn then return end
+    local section = menu.triggerName:match("QuiverBtn_(.+)") or ""
+    section = section:sub(1,1):upper() .. section:sub(2)
+    if menu.selected then
+        triggerBtn:SetAlpha(1.0)
+        local spellName = menu.selected.spell or ""
+        triggerBtn:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(section)
+            GameTooltip:AddLine("Left-click: open menu", 0.6, 0.6, 0.6)
+            GameTooltip:AddLine("Right-click: " .. spellName, 0.4, 1, 0.4)
+            GameTooltip:Show()
+        end)
+    else
+        triggerBtn:SetAlpha(0.6)
+        triggerBtn:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(section)
+            GameTooltip:AddLine("Left-click: open menu", 0.6, 0.6, 0.6)
+            GameTooltip:AddLine("Right-click: no quick-cast set", 0.5, 0.5, 0.5)
+            GameTooltip:Show()
+        end)
+    end
+    triggerBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
 function Menus:GetKnownSpells()
@@ -254,6 +279,7 @@ function Menus:SelectEntry(menu, entry)
         end
     end
 
+    UpdateTriggerReadiness(menu)
     pendingSelectionMenu = menu
     self:HideAll()
 end
