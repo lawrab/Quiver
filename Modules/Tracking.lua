@@ -37,5 +37,5 @@ end
 
 function Tracking:Cast(spellName)
     CastSpellByName(spellName)
-    Quiver.charDB.profile.lastTracking = spellName
+    Quiver.db.char.lastTracking = spellName
 end

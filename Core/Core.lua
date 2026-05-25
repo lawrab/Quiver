@@ -19,10 +19,7 @@ Quiver.defaults = {
             bestialWrath = true,
         },
     },
-}
-
-Quiver.charDefaults = {
-    Default = {
+    char = {
         lastAspect = nil,
         lastTracking = nil,
     },

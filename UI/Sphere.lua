@@ -18,17 +18,19 @@ function Sphere:Initialize()
     f:SetFrameStrata("MEDIUM")
     f:SetScale(Quiver.db.profile.sphere.scale)
 
-    -- Background orb texture (placeholder; replace with real asset)
+    -- Dark orb background
     local bg = f:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(f)
-    bg:SetTexture("Interface\\AddOns\\Quiver\\Media\\sphere")
+    bg:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+    bg:SetVertexColor(0.1, 0.1, 0.15, 1)
     self.bg = bg
 
-    -- Color overlay to tint sphere per aspect
+    -- Aspect color overlay (additive blend tints the orb)
     local overlay = f:CreateTexture(nil, "ARTWORK")
     overlay:SetAllPoints(f)
-    overlay:SetTexture("Interface\\AddOns\\Quiver\\Media\\sphere_overlay")
+    overlay:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
     overlay:SetBlendMode("ADD")
+    overlay:SetVertexColor(0, 0, 0, 0)
     self.overlay = overlay
 
     -- Ammo count text in center
@@ -99,8 +101,9 @@ function Sphere:SetupMenuButtons(f)
         b:SetPoint("CENTER", f, "CENTER",
             math.cos(rad) * radius,
             math.sin(rad) * radius)
-        b:SetNormalTexture("Interface\\ChatFrame\\ChatFrameBackground")
-        b:SetHighlightTexture("Interface\\ChatFrame\\ChatFrameBackground")
+        b:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2")
+        b:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress")
+        b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
         local label = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         label:SetAllPoints(b)
         label:SetText(btn.label)

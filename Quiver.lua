@@ -1,10 +1,7 @@
 -- Quiver: Hunter class mod for TBC Anniversary
 -- Necrosis-style circular sphere UI for hunter class mechanics
 
-Quiver = LibStub("AceAddon-3.0"):NewAddon("Quiver",
-    "AceEvent-3.0",
-    "AceDB-3.0"
-)
+Quiver = LibStub("AceAddon-3.0"):NewAddon("Quiver", "AceEvent-3.0")
 
 function Quiver:OnInitialize()
     local _, class = UnitClass("player")
@@ -13,7 +10,6 @@ function Quiver:OnInitialize()
     end
 
     self.db = LibStub("AceDB-3.0"):New("QuiverDB", self.defaults, true)
-    self.charDB = LibStub("AceDB-3.0"):New("QuiverCharDB", self.charDefaults, "Default")
 
     self.Core:Initialize()
 end

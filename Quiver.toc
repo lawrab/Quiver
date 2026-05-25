@@ -16,6 +16,9 @@ Libs\AceDB-3.0\AceDB-3.0.lua
 Libs\AceGUI-3.0\AceGUI-3.0.lua
 Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
 
+# Addon object (must precede all other files so the Quiver global exists)
+Quiver.lua
+
 # Locales
 Locales\enUS.lua
 
@@ -33,6 +36,3 @@ Modules\Tracking.lua
 # UI
 UI\Sphere.lua
 UI\Menus.lua
-
-# Entry point
-Quiver.lua
