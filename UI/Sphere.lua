@@ -24,7 +24,7 @@ function Sphere:Initialize()
     local bg = f:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(f)
     bg:SetTexture("Interface\\AddOns\\Quiver\\Media\\sphere")
-    bg:SetVertexColor(0.55, 0.62, 0.85, 1)
+    bg:SetVertexColor(0.30, 0.34, 0.48, 1)
     self.bg = bg
 
     -- Aspect color overlay (additive — tints the orb per active aspect)
@@ -220,7 +220,7 @@ function Sphere:UpdateColor()
         self:StopAspectPulse()
         local r, g, b = Quiver.Modules.Aspects:GetCurrentColor()
         if self.overlay then
-            self.overlay:SetVertexColor(r, g, b, 0.6)
+            self.overlay:SetVertexColor(r, g, b, 0.9)
         end
     else
         self:StartAspectPulse()
