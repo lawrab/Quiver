@@ -158,10 +158,14 @@ function Sphere:UpdateOnClick()
 
     f:SetAttribute("type", nil)
     f:SetAttribute("macrotext", nil)
-    f:SetAttribute("type2", nil)
-    f:SetAttribute("macrotext2", nil)
+    -- Always set explicit handlers for right (2) and middle (3) so they don't
+    -- fall through to the left-click catch-all bare "type" attribute.
+    f:SetAttribute("type2", "macro")
+    f:SetAttribute("macrotext2", "")
     f:SetAttribute("alt-type2", nil)
     f:SetAttribute("alt-macrotext2", nil)
+    f:SetAttribute("type3", "macro")
+    f:SetAttribute("macrotext3", "")
 
     if lc ~= "none" then
         f:SetAttribute("type", "macro")
@@ -169,9 +173,7 @@ function Sphere:UpdateOnClick()
     end
 
     if rc ~= "none" then
-        f:SetAttribute("type2", "macro")
         f:SetAttribute("macrotext2", "/cast " .. rc)
-        -- Alt+RightClick reserved for config panel
         f:SetAttribute("alt-type2", "macro")
         f:SetAttribute("alt-macrotext2", "")
     end
