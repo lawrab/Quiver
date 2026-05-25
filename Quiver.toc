@@ -26,6 +26,7 @@ Core\Core.lua
 
 # Modules
 Modules\Ammo.lua
+Modules\Mana.lua
 Modules\Aspects.lua
 Modules\Pet.lua
 Modules\Stings.lua

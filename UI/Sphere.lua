@@ -91,7 +91,7 @@ function Sphere:Initialize()
         end
     end)
 
-    self.pulsingAspect = false
+    self.pulseColor = nil
     self.frame = f
     self:SetupDrag(f)
     self:SetupMenuButtons(f)
@@ -202,28 +202,30 @@ function Sphere:Hide()
 end
 
 function Sphere:_UpdatePulse()
-    if not self.pulsingAspect or not self.overlay then return end
+    if not self.pulseColor or not self.overlay then return end
     local alpha = (math.sin(GetTime() * math.pi) + 1) / 2 * 0.7
-    self.overlay:SetVertexColor(1, 1, 1, alpha)
-end
-
-function Sphere:StartAspectPulse()
-    self.pulsingAspect = true
-end
-
-function Sphere:StopAspectPulse()
-    self.pulsingAspect = false
+    local c = self.pulseColor
+    self.overlay:SetVertexColor(c[1], c[2], c[3], alpha)
 end
 
 function Sphere:UpdateColor()
-    if Quiver.Modules.Aspects.current then
-        self:StopAspectPulse()
+    local current = Quiver.Modules.Aspects.current
+    local onViper = current and current.name == "Aspect of the Viper"
+    local manaLow = Quiver.Modules.Mana and Quiver.Modules.Mana.isLow
+
+    if manaLow and not onViper then
+        -- Blue pulse: mana low, switch to Viper
+        self.pulseColor = {0.3, 0.5, 1.0}
+    elseif not current then
+        -- Maroon pulse: no aspect active
+        self.pulseColor = {0.75, 0.08, 0.12}
+    else
+        -- Aspect active, mana fine: show aspect tint
+        self.pulseColor = nil
         local r, g, b = Quiver.Modules.Aspects:GetCurrentColor()
         if self.overlay then
             self.overlay:SetVertexColor(r, g, b, 0.6)
         end
-    else
-        self:StartAspectPulse()
     end
 end
 
