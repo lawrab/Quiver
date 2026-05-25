@@ -155,21 +155,22 @@ function Sphere:UpdateOnClick()
     local lc = Quiver.db.profile.sphere.leftClick
     local rc = Quiver.db.profile.sphere.rightClick
 
-    f:SetAttribute("type1", nil)
-    f:SetAttribute("macrotext1", nil)
-    f:SetAttribute("type2", nil)
-    f:SetAttribute("macrotext2", nil)
+    f:SetAttribute("*type1", nil)
+    f:SetAttribute("*macrotext1", nil)
+    f:SetAttribute("*type2", nil)
+    f:SetAttribute("*macrotext2", nil)
     f:SetAttribute("alt-type2", nil)
     f:SetAttribute("alt-macrotext2", nil)
 
     if lc ~= "none" then
-        f:SetAttribute("type1", "macro")
-        f:SetAttribute("macrotext1", "/cast " .. lc)
+        f:SetAttribute("*type1", "macro")
+        f:SetAttribute("*macrotext1", "/cast " .. lc)
     end
 
     if rc ~= "none" then
-        f:SetAttribute("type2", "macro")
-        f:SetAttribute("macrotext2", "/cast " .. rc)
+        f:SetAttribute("*type2", "macro")
+        f:SetAttribute("*macrotext2", "/cast " .. rc)
+        -- alt-type2 overrides *type2 for alt+right-click, reserving it for the config panel
         f:SetAttribute("alt-type2", "macro")
         f:SetAttribute("alt-macrotext2", "")
     end
