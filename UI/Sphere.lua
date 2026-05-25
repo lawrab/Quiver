@@ -93,21 +93,17 @@ end
 
 function Sphere:SetupDrag(f)
     f:SetMovable(true)
-    local moving = false
-    f:SetScript("OnMouseDown", function(self, button)
-        if button == "LeftButton" and IsAltKeyDown() and not Quiver.db.profile.sphere.locked then
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", function(self)
+        if IsAltKeyDown() and not Quiver.db.profile.sphere.locked then
             self:StartMoving()
-            moving = true
         end
     end)
-    f:SetScript("OnMouseUp", function(self, button)
-        if button == "LeftButton" and moving then
-            self:StopMovingOrSizing()
-            moving = false
-            local _, _, _, x, y = self:GetPoint()
-            Quiver.db.profile.sphere.x = x
-            Quiver.db.profile.sphere.y = y
-        end
+    f:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local _, _, _, x, y = self:GetPoint()
+        Quiver.db.profile.sphere.x = x
+        Quiver.db.profile.sphere.y = y
     end)
 end
 
