@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "wow-api-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "wow-api-mcp"
+      ],
+      "env": {}
+    }
+  }
+}

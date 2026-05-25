@@ -118,9 +118,6 @@ function Quiver:OnEnable() ... end
 ### Saved variables defaults
 Config stored in `QuiverDB` via AceDB-3.0. Per-character state (like last aspect) in `QuiverCharDB`.
 
-## MCP Servers Available in This Project
+## WoW API Reference
 
-- **wow-api-mcp** — lookup WoW API functions, events, widgets, enums (8000+ entries)
-- **wow-dev-mcp** — fuzzy search WoW global strings and API names, wiki integration
-
-Use these when you need to verify exact API names, event payload structures, or find the right WoW function.
+**wow-api-mcp** is configured in `.mcp.json` — use it to look up WoW API functions, events, enums, and widget methods (8000+ entries with full signatures). Falls back to wowpedia.org via web search for anything not covered.
