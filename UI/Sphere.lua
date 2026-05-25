@@ -93,17 +93,41 @@ end
 
 function Sphere:SetupDrag(f)
     f:SetMovable(true)
-    f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", function(self)
-        if IsAltKeyDown() and not Quiver.db.profile.sphere.locked then
-            self:StartMoving()
+    local watching = false
+    local moving   = false
+    local startX, startY
+
+    f:SetScript("OnMouseDown", function(self, button)
+        if button == "LeftButton" and IsAltKeyDown() and not Quiver.db.profile.sphere.locked then
+            startX, startY = GetCursorPosition()
+            watching = true
         end
     end)
-    f:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local _, _, _, x, y = self:GetPoint()
-        Quiver.db.profile.sphere.x = x
-        Quiver.db.profile.sphere.y = y
+
+    -- Deferred StartMoving: only engage once the cursor actually moves,
+    -- so a plain Alt+click never changes the pointer.
+    f:SetScript("OnUpdate", function(self)
+        if watching then
+            local x, y = GetCursorPosition()
+            if math.abs(x - startX) > 4 or math.abs(y - startY) > 4 then
+                self:StartMoving()
+                moving   = true
+                watching = false
+            end
+        end
+    end)
+
+    f:SetScript("OnMouseUp", function(self, button)
+        if button == "LeftButton" then
+            watching = false
+            if moving then
+                self:StopMovingOrSizing()
+                moving = false
+                local _, _, _, x, y = self:GetPoint()
+                Quiver.db.profile.sphere.x = x
+                Quiver.db.profile.sphere.y = y
+            end
+        end
     end)
 end
 
