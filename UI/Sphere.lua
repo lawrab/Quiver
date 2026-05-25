@@ -9,7 +9,7 @@ local SPHERE_SIZE = 80
 local INDICATOR_SIZE = 12
 
 function Sphere:Initialize()
-    local f = CreateFrame("Button", "QuiverSphere", UIParent)
+    local f = CreateFrame("Button", "QuiverSphere", UIParent, "SecureActionButtonTemplate")
     f:SetWidth(SPHERE_SIZE)
     f:SetHeight(SPHERE_SIZE)
     f:SetPoint("CENTER", UIParent, "CENTER",
@@ -17,6 +17,8 @@ function Sphere:Initialize()
         Quiver.db.profile.sphere.y)
     f:SetFrameStrata("MEDIUM")
     f:SetScale(Quiver.db.profile.sphere.scale)
+    -- AnyUp avoids conflict with RegisterForDrag on left button
+    f:RegisterForClicks("AnyUp")
 
     -- Sphere base texture
     local bg = f:CreateTexture(nil, "BACKGROUND")
@@ -58,8 +60,31 @@ function Sphere:Initialize()
     stingBar:SetValue(0)
     self.stingBar = stingBar
 
+    f:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Quiver", 1, 0.82, 0)
+        local lc = Quiver.db.profile.sphere.leftClick
+        local rc = Quiver.db.profile.sphere.rightClick
+        if lc.type ~= "none" and lc.value ~= "" then
+            GameTooltip:AddLine("Left-click: " .. lc.value, 1, 1, 1)
+        end
+        if rc.type ~= "none" and rc.value ~= "" then
+            GameTooltip:AddLine("Right-click: " .. rc.value, 1, 1, 1)
+        end
+        GameTooltip:AddLine("Alt+Right-click: Settings", 0.6, 0.6, 0.6)
+        GameTooltip:Show()
+    end)
+    f:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    f:SetScript("PostClick", function(self, button)
+        if button == "RightButton" and IsAltKeyDown() then
+            Quiver.UI.Config:Toggle()
+        end
+    end)
+
     self:SetupDrag(f)
     self:SetupMenuButtons(f)
+    self:UpdateOnClick()
 
     f:Show()
     self.frame = f
@@ -120,6 +145,41 @@ function Sphere:SetupMenuButtons(f)
         b:SetScript("OnLeave", function()
             GameTooltip:Hide()
         end)
+    end
+end
+
+function Sphere:UpdateOnClick()
+    local f = self.frame
+    if not f or InCombatLockdown() then return end
+
+    local lc = Quiver.db.profile.sphere.leftClick
+    local rc = Quiver.db.profile.sphere.rightClick
+
+    f:SetAttribute("type1", nil)
+    f:SetAttribute("macrotext1", nil)
+    f:SetAttribute("type2", nil)
+    f:SetAttribute("macrotext2", nil)
+    f:SetAttribute("alt-type2", nil)
+    f:SetAttribute("alt-macrotext2", nil)
+
+    if lc.type == "spell" and lc.value ~= "" then
+        f:SetAttribute("type1", "macro")
+        f:SetAttribute("macrotext1", "/cast " .. lc.value)
+    elseif lc.type == "macro" and lc.value ~= "" then
+        f:SetAttribute("type1", "macro")
+        f:SetAttribute("macrotext1", lc.value)
+    end
+
+    if rc.type == "spell" and rc.value ~= "" then
+        f:SetAttribute("type2", "macro")
+        f:SetAttribute("macrotext2", "/cast " .. rc.value)
+        f:SetAttribute("alt-type2", "macro")
+        f:SetAttribute("alt-macrotext2", "")
+    elseif rc.type == "macro" and rc.value ~= "" then
+        f:SetAttribute("type2", "macro")
+        f:SetAttribute("macrotext2", rc.value)
+        f:SetAttribute("alt-type2", "macro")
+        f:SetAttribute("alt-macrotext2", "")
     end
 end
 

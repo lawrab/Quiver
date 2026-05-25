@@ -34,4 +34,5 @@ Modules\Tracking.lua
 
 # UI
 UI\Sphere.lua
+UI\Config.lua
 UI\Menus.lua
