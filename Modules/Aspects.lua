@@ -24,27 +24,27 @@ function Aspects:Initialize()
 end
 
 function Aspects:Enable()
-    Quiver:RegisterEvent("UNIT_AURA", function(_, unit)
-        if unit == "player" then self:DetectCurrentAspect() end
-    end)
+    Quiver:RegisterEvent("UPDATE_SHAPESHIFT_FORM", function() self:DetectCurrentAspect() end)
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:DetectCurrentAspect() end)
     self:DetectCurrentAspect()
 end
 
 function Aspects:DetectCurrentAspect()
     self.current = nil
-    local i = 1
-    while true do
-        local name = UnitBuff("player", i)
-        if not name then break end
-        for _, aspect in ipairs(ASPECTS) do
-            if name == aspect.name then
-                self.current = aspect
-                Quiver.UI.Sphere:UpdateColor()
-                return
+    local formIndex = GetShapeshiftForm()
+    if formIndex and formIndex > 0 then
+        local _, _, _, spellID = GetShapeshiftFormInfo(formIndex)
+        if spellID then
+            local name = GetSpellInfo(spellID)
+            if name then
+                for _, aspect in ipairs(ASPECTS) do
+                    if name == aspect.name then
+                        self.current = aspect
+                        break
+                    end
+                end
             end
         end
-        i = i + 1
     end
     Quiver.UI.Sphere:UpdateColor()
 end
