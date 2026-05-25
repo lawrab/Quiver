@@ -92,17 +92,21 @@ end
 
 function Sphere:SetupDrag(f)
     f:SetMovable(true)
-    f:RegisterForDrag("MiddleButton")
-    f:SetScript("OnDragStart", function(self)
-        if not Quiver.db.profile.sphere.locked then
+    local moving = false
+    f:SetScript("OnMouseDown", function(self, button)
+        if button == "LeftButton" and IsAltKeyDown() and not Quiver.db.profile.sphere.locked then
             self:StartMoving()
+            moving = true
         end
     end)
-    f:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, _, x, y = self:GetPoint()
-        Quiver.db.profile.sphere.x = x
-        Quiver.db.profile.sphere.y = y
+    f:SetScript("OnMouseUp", function(self, button)
+        if button == "LeftButton" and moving then
+            self:StopMovingOrSizing()
+            moving = false
+            local _, _, _, x, y = self:GetPoint()
+            Quiver.db.profile.sphere.x = x
+            Quiver.db.profile.sphere.y = y
+        end
     end)
 end
 
@@ -157,20 +161,25 @@ function Sphere:UpdateOnClick()
 
     f:SetAttribute("type", nil)
     f:SetAttribute("macrotext", nil)
+    f:SetAttribute("alt-type", nil)
+    f:SetAttribute("alt-macrotext", nil)
     f:SetAttribute("type2", nil)
     f:SetAttribute("macrotext2", nil)
     f:SetAttribute("alt-type2", nil)
     f:SetAttribute("alt-macrotext2", nil)
 
     if lc ~= "none" then
-        -- bare type/macrotext = same format as popup buttons (confirmed working)
         f:SetAttribute("type", "macro")
         f:SetAttribute("macrotext", "/cast " .. lc)
+        -- Alt+LeftClick is reserved for drag; suppress the spell cast
+        f:SetAttribute("alt-type", "macro")
+        f:SetAttribute("alt-macrotext", "")
     end
 
     if rc ~= "none" then
         f:SetAttribute("type2", "macro")
         f:SetAttribute("macrotext2", "/cast " .. rc)
+        -- Alt+RightClick reserved for config panel
         f:SetAttribute("alt-type2", "macro")
         f:SetAttribute("alt-macrotext2", "")
     end
