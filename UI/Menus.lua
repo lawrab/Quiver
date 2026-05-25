@@ -68,6 +68,8 @@ local function MakeActionButton(label, icon, spellCast)
         if macroText then
             b:SetAttribute("type", "macro")
             b:SetAttribute("macrotext", macroText)
+            b:SetAttribute("type2", "macro")
+            b:SetAttribute("macrotext2", macroText)
         end
     end
     -- Match ActionButtonUseKeyDown CVar so click fires at the right time
