@@ -71,7 +71,7 @@ function Sphere:Initialize()
         if rc ~= "none" then
             GameTooltip:AddLine("Right-click: " .. rc, 1, 1, 1)
         end
-        GameTooltip:AddLine("Alt+Left-click: Drag", 0.6, 0.6, 0.6)
+        GameTooltip:AddLine("Middle-click: Drag", 0.6, 0.6, 0.6)
         GameTooltip:AddLine("Alt+Right-click: Settings", 0.6, 0.6, 0.6)
         GameTooltip:Show()
     end)
@@ -93,22 +93,17 @@ end
 
 function Sphere:SetupDrag(f)
     f:SetMovable(true)
-    local moving = false
-    f:SetScript("OnMouseDown", function(self, button)
-        if button == "LeftButton" and IsAltKeyDown() and not Quiver.db.profile.sphere.locked then
+    f:RegisterForDrag("MiddleButton")
+    f:SetScript("OnDragStart", function(self)
+        if not Quiver.db.profile.sphere.locked then
             self:StartMoving()
-            ResetCursor()
-            moving = true
         end
     end)
-    f:SetScript("OnMouseUp", function(self, button)
-        if button == "LeftButton" and moving then
-            self:StopMovingOrSizing()
-            moving = false
-            local _, _, _, x, y = self:GetPoint()
-            Quiver.db.profile.sphere.x = x
-            Quiver.db.profile.sphere.y = y
-        end
+    f:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local _, _, _, x, y = self:GetPoint()
+        Quiver.db.profile.sphere.x = x
+        Quiver.db.profile.sphere.y = y
     end)
 end
 
@@ -163,8 +158,6 @@ function Sphere:UpdateOnClick()
 
     f:SetAttribute("type", nil)
     f:SetAttribute("macrotext", nil)
-    f:SetAttribute("alt-type", nil)
-    f:SetAttribute("alt-macrotext", nil)
     f:SetAttribute("type2", nil)
     f:SetAttribute("macrotext2", nil)
     f:SetAttribute("alt-type2", nil)
@@ -173,9 +166,6 @@ function Sphere:UpdateOnClick()
     if lc ~= "none" then
         f:SetAttribute("type", "macro")
         f:SetAttribute("macrotext", "/cast " .. lc)
-        -- Alt+LeftClick is reserved for drag; suppress the spell cast
-        f:SetAttribute("alt-type", "macro")
-        f:SetAttribute("alt-macrotext", "")
     end
 
     if rc ~= "none" then
