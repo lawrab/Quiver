@@ -71,6 +71,7 @@ function Sphere:Initialize()
         if rc ~= "none" then
             GameTooltip:AddLine("Right-click: " .. rc, 1, 1, 1)
         end
+        GameTooltip:AddLine("Alt+Left-click: Drag", 0.6, 0.6, 0.6)
         GameTooltip:AddLine("Alt+Right-click: Settings", 0.6, 0.6, 0.6)
         GameTooltip:Show()
     end)
