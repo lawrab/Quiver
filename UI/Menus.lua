@@ -12,6 +12,19 @@ local BUTTON_SIZE = 28
 local BUTTON_SPACING = 34
 local activeMenu = nil
 
+-- Deferred attribute application: SetAttribute on secure frames from PostClick
+-- (after a secure action fired) can be silently blocked in TBC Classic.
+-- We write the pending menu here and apply it on the very next OnUpdate frame.
+local pendingSelectionMenu = nil
+local selectionTicker = CreateFrame("Frame")
+selectionTicker:SetScript("OnUpdate", function()
+    if pendingSelectionMenu and not InCombatLockdown() then
+        local m = pendingSelectionMenu
+        pendingSelectionMenu = nil
+        Quiver.UI.Menus:ApplySelectionToTrigger(m)
+    end
+end)
+
 -- Maps spell name → numeric spell ID (or true if ID unavailable) from spellbook scan.
 -- We prefer spell IDs in secure attributes; they cast unambiguously regardless of rank.
 -- Falls back to spell name string when GetSpellBookItemInfo doesn't return an ID.
@@ -241,7 +254,7 @@ function Menus:SelectEntry(menu, entry)
         end
     end
 
-    self:ApplySelectionToTrigger(menu)
+    pendingSelectionMenu = menu
     self:HideAll()
 end
 
