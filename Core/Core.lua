@@ -28,6 +28,11 @@ Quiver.defaults = {
 }
 
 function Core:Initialize()
+    -- Migrate leftClick/rightClick from old {type,value} table schema to plain string
+    local sp = Quiver.db.profile.sphere
+    if type(sp.leftClick) == "table" then sp.leftClick = "none" end
+    if type(sp.rightClick) == "table" then sp.rightClick = "none" end
+
     -- modules init in dependency order
     Quiver.Modules.Ammo:Initialize()
     Quiver.Modules.Aspects:Initialize()
