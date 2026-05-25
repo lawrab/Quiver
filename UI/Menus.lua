@@ -73,11 +73,47 @@ local function PopulateMenu(menu)
     for _, entry in ipairs(menu.entries) do
         if not entry.spell or IsSpellKnown(entry.spell) then
             idx = idx + 1
-            local b = MakeActionButton(menu.frame, entry.label, entry.icon, entry.onClick, idx)
+            local icon = entry.icon
+            if not icon and entry.spell then
+                local _, _, spellIcon = GetSpellInfo(entry.spell)
+                icon = spellIcon
+            end
+            local b = MakeActionButton(menu.frame, entry.label, icon, entry.onClick, idx)
             table.insert(menu.buttons, b)
         end
     end
     menu.frame:SetWidth(math.max(1, idx * BUTTON_SPACING))
+
+    -- Show lock icon when menu has no known spells; restore spell icon when it does
+    local triggerBtn = _G[menu.frame.triggerName]
+    if triggerBtn then
+        if idx == 0 then
+            triggerBtn:SetAlpha(0.7)
+            triggerBtn:SetNormalTexture("Interface\\AddOns\\Quiver\\Media\\lock")
+            triggerBtn:SetPushedTexture("Interface\\AddOns\\Quiver\\Media\\lock")
+            triggerBtn:SetScript("OnClick", nil)
+            triggerBtn:SetScript("OnEnter", function()
+                GameTooltip:SetOwner(triggerBtn, "ANCHOR_RIGHT")
+                GameTooltip:AddLine("No spells learned yet", 1, 0.82, 0)
+                GameTooltip:Show()
+            end)
+            triggerBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        else
+            triggerBtn:SetAlpha(1.0)
+            -- Restore the original spell icon
+            local _, _, icon = GetSpellInfo(triggerBtn.spellHint or "")
+            if icon then
+                triggerBtn:SetNormalTexture(icon)
+                triggerBtn:SetPushedTexture(icon)
+            end
+            local menuName = menu.frame.triggerName:match("QuiverBtn_(.+)")
+            triggerBtn:SetScript("OnClick", function()
+                Quiver.UI.Menus:Toggle(menuName)
+            end)
+            triggerBtn:SetScript("OnEnter", nil)
+            triggerBtn:SetScript("OnLeave", nil)
+        end
+    end
 end
 
 function Menus:RebuildAll()
@@ -115,11 +151,13 @@ end
 -- ── Menu definitions ──────────────────────────────────────────────────────────
 
 local function NewMenu(btnName, growLeft, entries)
+    local f = MakeMenuFrame(btnName, growLeft)
+    f.triggerName = btnName
     return {
-        frame   = MakeMenuFrame(btnName, growLeft),
+        frame    = f,
         growLeft = growLeft,
-        entries = entries,
-        buttons = {},
+        entries  = entries,
+        buttons  = {},
     }
 end
 
@@ -146,27 +184,11 @@ function Menus:Initialize()
 
         -- P at upper-right (angle 30) — expand right
         pet = NewMenu("QuiverBtn_pet", false, {
-            { label = "Call",    onClick = function() Quiver.Modules.Pet:CallPet()    hideAll() end },
-            { label = "Dismiss", onClick = function() Quiver.Modules.Pet:DismissPet() hideAll() end },
-            { spell = "Revive Pet",  label = "Revive",
-                                     onClick = function() Quiver.Modules.Pet:RevivePet() hideAll() end },
-            { spell = "Mend Pet",    label = "Mend",
-                                     onClick = function() Quiver.Modules.Pet:MendPet()   hideAll() end },
+            { spell = "Call Pet",    label = "Call",    onClick = function() Quiver.Modules.Pet:CallPet()    hideAll() end },
+            { spell = "Dismiss Pet", label = "Dismiss", onClick = function() Quiver.Modules.Pet:DismissPet() hideAll() end },
+            { spell = "Revive Pet",  label = "Revive",  onClick = function() Quiver.Modules.Pet:RevivePet()  hideAll() end },
+            { spell = "Mend Pet",    label = "Mend",    onClick = function() Quiver.Modules.Pet:MendPet()    hideAll() end },
         }),
-
-        -- S at lower-right (angle 330) — expand right
-        stings = NewMenu("QuiverBtn_stings", false, (function()
-            local t = {}
-            for _, s in ipairs(Quiver.Modules.Stings.STINGS) do
-                local name = s.name
-                t[#t+1] = {
-                    spell   = name,
-                    label   = name:match("^(%S+)"),
-                    onClick = function() Quiver.Modules.Stings:Cast(name) hideAll() end,
-                }
-            end
-            return t
-        end)()),
 
         -- T at lower-left (angle 210) — expand left
         traps = NewMenu("QuiverBtn_traps", true, (function()

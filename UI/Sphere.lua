@@ -5,7 +5,7 @@ local Sphere = {}
 Quiver.UI = Quiver.UI or {}
 Quiver.UI.Sphere = Sphere
 
-local SPHERE_SIZE = 64
+local SPHERE_SIZE = 80
 local INDICATOR_SIZE = 12
 
 function Sphere:Initialize()
@@ -18,17 +18,17 @@ function Sphere:Initialize()
     f:SetFrameStrata("MEDIUM")
     f:SetScale(Quiver.db.profile.sphere.scale)
 
-    -- Dark orb background
+    -- Sphere base texture
     local bg = f:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(f)
-    bg:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
-    bg:SetVertexColor(0.1, 0.1, 0.15, 1)
+    bg:SetTexture("Interface\\AddOns\\Quiver\\Media\\sphere")
+    bg:SetVertexColor(0.55, 0.62, 0.85, 1)
     self.bg = bg
 
-    -- Aspect color overlay (additive blend tints the orb)
+    -- Aspect color overlay (additive — tints the orb per active aspect)
     local overlay = f:CreateTexture(nil, "ARTWORK")
     overlay:SetAllPoints(f)
-    overlay:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+    overlay:SetTexture("Interface\\AddOns\\Quiver\\Media\\sphere")
     overlay:SetBlendMode("ADD")
     overlay:SetVertexColor(0, 0, 0, 0)
     self.overlay = overlay
@@ -38,14 +38,14 @@ function Sphere:Initialize()
     ammoText:SetPoint("CENTER", f, "CENTER", 0, 0)
     self.ammoText = ammoText
 
-    -- Pet happiness dot (bottom-left)
-    local petDot = f:CreateTexture(nil, "OVERLAY")
-    petDot:SetWidth(INDICATOR_SIZE)
-    petDot:SetHeight(INDICATOR_SIZE)
-    petDot:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 2, 2)
-    petDot:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
-    petDot:SetVertexColor(0.5, 0.5, 0.5)
-    self.petDot = petDot
+    -- Pet happiness ring border around the sphere
+    local petRing = f:CreateTexture(nil, "BACKGROUND")
+    petRing:SetTexture("Interface\\AddOns\\Quiver\\Media\\ring")
+    petRing:SetPoint("CENTER", f, "CENTER", 0, 0)
+    petRing:SetWidth(SPHERE_SIZE)
+    petRing:SetHeight(SPHERE_SIZE)
+    petRing:SetVertexColor(0.3, 0.3, 0.3, 0)
+    self.petRing = petRing
 
     -- Sting duration bar (bottom of sphere)
     local stingBar = CreateFrame("StatusBar", nil, f)
@@ -82,34 +82,43 @@ function Sphere:SetupDrag(f)
 end
 
 function Sphere:SetupMenuButtons(f)
-    -- Menu trigger buttons arranged around the orb
-    -- Each calls Quiver.UI.Menus:Toggle(menuName)
+    -- Representative spell for each section — icon pulled from GetSpellInfo
     local buttons = {
-        { name = "aspects",  angle = 90,  label = "A" },
-        { name = "pet",      angle = 30,  label = "P" },
-        { name = "stings",   angle = 330, label = "S" },
-        { name = "traps",    angle = 210, label = "T" },
-        { name = "tracking", angle = 150, label = "Tr" },
+        { name = "aspects",  angle = 90,  spell = "Aspect of the Hawk" },
+        { name = "pet",      angle = 30,  spell = "Call Pet" },
+        { name = "traps",    angle = 210, spell = "Frost Trap" },
+        { name = "tracking", angle = 150, spell = "Track Beasts" },
     }
 
-    local radius = SPHERE_SIZE / 2 + 12
+    local BTN_SIZE = 26
+    local radius = SPHERE_SIZE / 2 + BTN_SIZE / 2 + 6
     for _, btn in ipairs(buttons) do
         local b = CreateFrame("Button", "QuiverBtn_"..btn.name, f)
-        b:SetWidth(20)
-        b:SetHeight(20)
+        b:SetWidth(BTN_SIZE)
+        b:SetHeight(BTN_SIZE)
         local rad = math.rad(btn.angle)
         b:SetPoint("CENTER", f, "CENTER",
             math.cos(rad) * radius,
             math.sin(rad) * radius)
-        b:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2")
-        b:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress")
+
+        -- Icon from spell, fallback to empty slot; store hint for later restore
+        local _, _, icon = GetSpellInfo(btn.spell)
+        b.spellHint = btn.spell
+        b:SetNormalTexture(icon or "Interface\\Buttons\\UI-Quickslot2")
+        b:SetPushedTexture(icon or "Interface\\Buttons\\UI-Quickslot-Depress")
         b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
-        local label = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        label:SetAllPoints(b)
-        label:SetText(btn.label)
+
         local menuName = btn.name
         b:SetScript("OnClick", function()
             Quiver.UI.Menus:Toggle(menuName)
+        end)
+        b:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(btn.name:sub(1,1):upper()..btn.name:sub(2))
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function()
+            GameTooltip:Hide()
         end)
     end
 end
@@ -146,10 +155,13 @@ function Sphere:FlashAmmoWarning()
 end
 
 function Sphere:UpdatePetIndicator()
-    if self.petDot then
-        local r, g, b = Quiver.Modules.Pet:GetHappinessColor()
-        self.petDot:SetVertexColor(r, g, b)
-        self.petDot:SetShown(Quiver.Modules.Pet.exists)
+    if self.petRing then
+        if Quiver.Modules.Pet.exists then
+            local r, g, b = Quiver.Modules.Pet:GetHappinessColor()
+            self.petRing:SetVertexColor(r, g, b, 0.85)
+        else
+            self.petRing:SetVertexColor(0, 0, 0, 0)
+        end
     end
 end
 
