@@ -211,10 +211,11 @@ function Menus:Initialize()
         end)()),
 
         pet = NewMenu("QuiverBtn_pet", false, {
-            { spell = "Call Pet",    label = "Call"    },
-            { spell = "Dismiss Pet", label = "Dismiss" },
-            { spell = "Revive Pet",  label = "Revive"  },
-            { spell = "Mend Pet",    label = "Mend"    },
+            { spell = "Call Pet",       label = "Call"    },
+            { spell = "Dismiss Pet",    label = "Dismiss" },
+            { spell = "Revive Pet",     label = "Revive"  },
+            { spell = "Mend Pet",       label = "Mend"    },
+            { spell = "Beast Training", label = "Train"   },
         }),
 
         traps = NewMenu("QuiverBtn_traps", true, (function()
