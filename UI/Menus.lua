@@ -79,8 +79,6 @@ local function MakeActionButton(label, icon, spellCast)
             macroText = "/cast " .. spellCast
         end
         if macroText then
-            b:SetAttribute("type", "macro")
-            b:SetAttribute("macrotext", macroText)
             b:SetAttribute("type2", "macro")
             b:SetAttribute("macrotext2", macroText)
         end
@@ -92,6 +90,8 @@ local function MakeActionButton(label, icon, spellCast)
     b:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:AddLine(label)
+        GameTooltip:AddLine("Left-click: select for quick-cast", 0.6, 0.6, 0.6)
+        GameTooltip:AddLine("Right-click: cast now", 0.6, 0.6, 0.6)
         GameTooltip:Show()
     end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -119,6 +119,13 @@ local function PopulateMenu(menu)
                 icon = spellIcon
             end
             local b = MakeActionButton(entry.label, icon, castTarget)
+            if entry.showCooldown and entry.spell then
+                local cd = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
+                cd:SetAllPoints(b)
+                cd:SetDrawEdge(false)
+                b.cdFrame = cd
+                b.cdSpell = entry.spell
+            end
             local capturedEntry = entry
             b:SetScript("PostClick", function(_, button)
                 if button == "LeftButton" then
@@ -320,6 +327,18 @@ function Menus:HideAll()
 end
 
 function Menus:UpdateTrapCooldowns()
+    local trapMenu = self.menus and self.menus.traps
+    if not trapMenu then return end
+    for _, b in ipairs(trapMenu.buttons) do
+        if b.cdFrame and b.cdSpell then
+            local start, duration = GetSpellCooldown(b.cdSpell)
+            if duration and duration > 1.5 then
+                b.cdFrame:SetCooldown(start, duration)
+            else
+                b.cdFrame:SetCooldown(0, 0)
+            end
+        end
+    end
 end
 
 -- ── Menu definitions ──────────────────────────────────────────────────────────
@@ -355,7 +374,7 @@ function Menus:Initialize()
         traps = NewMenu("QuiverBtn_traps", true, (function()
             local t = {}
             for _, trap in ipairs(Quiver.Modules.Traps.TRAPS) do
-                t[#t+1] = { spell = trap.name, label = trap.name:match("^(%S+)"), icon = trap.icon }
+                t[#t+1] = { spell = trap.name, label = trap.name:match("^(%S+)"), icon = trap.icon, showCooldown = true }
             end
             return t
         end)()),
