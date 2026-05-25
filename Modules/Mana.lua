@@ -13,8 +13,8 @@ function Mana:Initialize()
 end
 
 function Mana:Enable()
-    Quiver:RegisterEvent("UNIT_MANA", function(_, unit)
-        if unit == "player" then self:Check() end
+    Quiver:RegisterEvent("UNIT_POWER_UPDATE", function(_, unit, powerType)
+        if unit == "player" and powerType == "MANA" then self:Check() end
     end)
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:Check() end)
     self:Check()
@@ -31,9 +31,9 @@ function Mana:Enable()
 end
 
 function Mana:Check()
-    local max = UnitManaMax("player")
+    local max = UnitPowerMax("player", 0)
     if not max or max == 0 then return end
-    local pct = UnitMana("player") / max
+    local pct = UnitPower("player", 0) / max
     local wasLow = self.isLow
     self.isLow = pct < THRESHOLD
     if self.isLow ~= wasLow then
