@@ -77,6 +77,10 @@ function Sphere:Initialize()
     end)
     f:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+    f:SetScript("OnUpdate", function()
+        Sphere:_UpdatePulse()
+    end)
+
     f:SetScript("PostClick", function(self, button)
         if button == "RightButton" and IsAltKeyDown() then
             Quiver.UI.Config:Toggle()
@@ -91,6 +95,7 @@ function Sphere:Initialize()
         end
     end)
 
+    self.pulsingAspect = false
     self.frame = f
     self:SetupDrag(f)
     self:SetupMenuButtons(f)
@@ -195,10 +200,29 @@ function Sphere:Hide()
     if self.frame then self.frame:Hide() end
 end
 
+function Sphere:_UpdatePulse()
+    if not self.pulsingAspect or not self.overlay then return end
+    local alpha = (math.sin(GetTime() * math.pi) + 1) / 2 * 0.35
+    self.overlay:SetVertexColor(0.75, 0.75, 0.9, alpha)
+end
+
+function Sphere:StartAspectPulse()
+    self.pulsingAspect = true
+end
+
+function Sphere:StopAspectPulse()
+    self.pulsingAspect = false
+end
+
 function Sphere:UpdateColor()
-    local r, g, b = Quiver.Modules.Aspects:GetCurrentColor()
-    if self.overlay then
-        self.overlay:SetVertexColor(r, g, b, 0.6)
+    if Quiver.Modules.Aspects.current then
+        self:StopAspectPulse()
+        local r, g, b = Quiver.Modules.Aspects:GetCurrentColor()
+        if self.overlay then
+            self.overlay:SetVertexColor(r, g, b, 0.6)
+        end
+    else
+        self:StartAspectPulse()
     end
 end
 
