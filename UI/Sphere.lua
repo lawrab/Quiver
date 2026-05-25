@@ -17,8 +17,8 @@ function Sphere:Initialize()
         Quiver.db.profile.sphere.y)
     f:SetFrameStrata("MEDIUM")
     f:SetScale(Quiver.db.profile.sphere.scale)
-    -- AnyUp avoids conflict with RegisterForDrag on left button
-    f:RegisterForClicks("AnyUp")
+    local keydown = GetCVarBool("ActionButtonUseKeyDown")
+    f:RegisterForClicks(keydown and "AnyDown" or "AnyUp")
 
     -- Sphere base texture
     local bg = f:CreateTexture(nil, "BACKGROUND")
@@ -92,7 +92,7 @@ end
 
 function Sphere:SetupDrag(f)
     f:SetMovable(true)
-    f:RegisterForDrag("LeftButton")
+    f:RegisterForDrag("MiddleButton")
     f:SetScript("OnDragStart", function(self)
         if not Quiver.db.profile.sphere.locked then
             self:StartMoving()
@@ -155,22 +155,22 @@ function Sphere:UpdateOnClick()
     local lc = Quiver.db.profile.sphere.leftClick
     local rc = Quiver.db.profile.sphere.rightClick
 
-    f:SetAttribute("*type1", nil)
-    f:SetAttribute("*macrotext1", nil)
-    f:SetAttribute("*type2", nil)
-    f:SetAttribute("*macrotext2", nil)
+    f:SetAttribute("type", nil)
+    f:SetAttribute("macrotext", nil)
+    f:SetAttribute("type2", nil)
+    f:SetAttribute("macrotext2", nil)
     f:SetAttribute("alt-type2", nil)
     f:SetAttribute("alt-macrotext2", nil)
 
     if lc ~= "none" then
-        f:SetAttribute("*type1", "macro")
-        f:SetAttribute("*macrotext1", "/cast " .. lc)
+        -- bare type/macrotext = same format as popup buttons (confirmed working)
+        f:SetAttribute("type", "macro")
+        f:SetAttribute("macrotext", "/cast " .. lc)
     end
 
     if rc ~= "none" then
-        f:SetAttribute("*type2", "macro")
-        f:SetAttribute("*macrotext2", "/cast " .. rc)
-        -- alt-type2 overrides *type2 for alt+right-click, reserving it for the config panel
+        f:SetAttribute("type2", "macro")
+        f:SetAttribute("macrotext2", "/cast " .. rc)
         f:SetAttribute("alt-type2", "macro")
         f:SetAttribute("alt-macrotext2", "")
     end
