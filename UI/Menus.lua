@@ -66,8 +66,8 @@ local function MakeActionButton(label, icon, spellCast)
             macroText = "/cast " .. spellCast
         end
         if macroText then
-            b:SetAttribute("type", "macro")
-            b:SetAttribute("macrotext", macroText)
+            b:SetAttribute("type2", "macro")
+            b:SetAttribute("macrotext2", macroText)
         end
     end
     -- Match ActionButtonUseKeyDown CVar so click fires at the right time
@@ -104,6 +104,12 @@ local function PopulateMenu(menu)
                 icon = spellIcon
             end
             local b = MakeActionButton(entry.label, icon, castTarget)
+            local capturedEntry = entry
+            b:SetScript("PostClick", function(_, button)
+                if button == "LeftButton" then
+                    Menus:SelectEntry(menu, capturedEntry)
+                end
+            end)
             table.insert(menu.buttons, b)
         end
     end
@@ -130,7 +136,7 @@ local function PopulateMenu(menu)
         triggerBtn:SetAlpha(0.7)
         triggerBtn:SetNormalTexture("Interface\\AddOns\\Quiver\\Media\\lock")
         triggerBtn:SetPushedTexture("Interface\\AddOns\\Quiver\\Media\\lock")
-        triggerBtn:SetScript("OnClick", nil)
+        triggerBtn:SetScript("PostClick", nil)
         triggerBtn:SetScript("OnEnter", function()
             GameTooltip:SetOwner(triggerBtn, "ANCHOR_RIGHT")
             GameTooltip:AddLine("No spells learned yet", 1, 0.82, 0)
@@ -139,10 +145,29 @@ local function PopulateMenu(menu)
         triggerBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     else
         triggerBtn:SetAlpha(1.0)
-        local hintId = GetSpellId(triggerBtn.spellHint or "")
-        local hintTarget = hintId or triggerBtn.spellHint or ""
-        local _, _, icon = GetSpellInfo(hintTarget)
-        -- Fall back to the first known entry's explicit icon (e.g. traps have hardcoded icons)
+
+        -- Validate stored selection — spell may have become unknown
+        if menu.selected and menu.selected.spell and not IsSpellKnown(menu.selected.spell) then
+            menu.selected = nil
+        end
+
+        -- Icon: prefer active selection, else fall back to hint
+        local icon
+        if menu.selected then
+            local spellId = menu.selected.spell and GetSpellId(menu.selected.spell)
+            local castTarget = spellId or menu.selected.spell
+            icon = menu.selected.icon
+            if not icon and castTarget then
+                local _, _, si = GetSpellInfo(castTarget)
+                icon = si
+            end
+        end
+        if not icon then
+            local hintId = GetSpellId(triggerBtn.spellHint or "")
+            local hintTarget = hintId or triggerBtn.spellHint or ""
+            local _, _, hi = GetSpellInfo(hintTarget)
+            icon = hi
+        end
         if not icon then
             for _, entry in ipairs(menu.entries) do
                 if (not entry.spell or IsSpellKnown(entry.spell)) and entry.icon then
@@ -155,9 +180,17 @@ local function PopulateMenu(menu)
             triggerBtn:SetNormalTexture(icon)
             triggerBtn:SetPushedTexture(icon)
         end
+
+        -- Apply right-click cast attribute for current selection
+        Menus:ApplySelectionToTrigger(menu)
+
         local menuName = menu.triggerName:match("QuiverBtn_(.+)")
-        triggerBtn:SetScript("OnClick", function()
-            Quiver.UI.Menus:Toggle(menuName)
+        triggerBtn:SetScript("PostClick", function(_, button)
+            if button == "LeftButton" then
+                Quiver.UI.Menus:Toggle(menuName)
+            elseif button == "RightButton" then
+                Quiver.UI.Menus:HideAll()
+            end
         end)
         triggerBtn:SetScript("OnEnter", nil)
         triggerBtn:SetScript("OnLeave", nil)
@@ -166,6 +199,48 @@ end
 
 function Menus:GetKnownSpells()
     return knownSpellCache
+end
+
+function Menus:ApplySelectionToTrigger(menu)
+    if InCombatLockdown() then return end
+    local triggerBtn = _G[menu.triggerName]
+    if not triggerBtn then return end
+    if menu.selected then
+        local entry = menu.selected
+        local spellId = entry.spell and GetSpellId(entry.spell)
+        local castTarget = spellId or entry.spell
+        local name = type(castTarget) == "number" and GetSpellInfo(castTarget) or castTarget
+        if name then
+            triggerBtn:SetAttribute("type2", "macro")
+            triggerBtn:SetAttribute("macrotext2", "/cast " .. name)
+            return
+        end
+    end
+    triggerBtn:SetAttribute("type2", nil)
+    triggerBtn:SetAttribute("macrotext2", nil)
+end
+
+function Menus:SelectEntry(menu, entry)
+    menu.selected = entry
+
+    -- Update trigger icon
+    local triggerBtn = _G[menu.triggerName]
+    if triggerBtn then
+        local spellId = entry.spell and GetSpellId(entry.spell)
+        local castTarget = spellId or entry.spell
+        local icon = entry.icon
+        if not icon and castTarget then
+            local _, _, si = GetSpellInfo(castTarget)
+            icon = si
+        end
+        if icon then
+            triggerBtn:SetNormalTexture(icon)
+            triggerBtn:SetPushedTexture(icon)
+        end
+    end
+
+    self:ApplySelectionToTrigger(menu)
+    self:HideAll()
 end
 
 function Menus:RebuildAll()

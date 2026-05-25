@@ -133,13 +133,15 @@ function Sphere:SetupMenuButtons(f)
     local BTN_SIZE = 26
     local radius = SPHERE_SIZE / 2 + BTN_SIZE / 2 + 6
     for _, btn in ipairs(buttons) do
-        local b = CreateFrame("Button", "QuiverBtn_"..btn.name, f)
+        local b = CreateFrame("Button", "QuiverBtn_"..btn.name, f, "SecureActionButtonTemplate")
         b:SetWidth(BTN_SIZE)
         b:SetHeight(BTN_SIZE)
         local rad = math.rad(btn.angle)
         b:SetPoint("CENTER", f, "CENTER",
             math.cos(rad) * radius,
             math.sin(rad) * radius)
+        local keydown = GetCVarBool("ActionButtonUseKeyDown")
+        b:RegisterForClicks(keydown and "AnyDown" or "AnyUp")
 
         -- Icon from spell, fallback to empty slot; store hint for later restore
         local _, _, icon = GetSpellInfo(btn.spell)
@@ -149,12 +151,18 @@ function Sphere:SetupMenuButtons(f)
         b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
 
         local menuName = btn.name
-        b:SetScript("OnClick", function()
-            Quiver.UI.Menus:Toggle(menuName)
+        b:SetScript("PostClick", function(_, button)
+            if button == "LeftButton" then
+                Quiver.UI.Menus:Toggle(menuName)
+            elseif button == "RightButton" then
+                Quiver.UI.Menus:HideAll()
+            end
         end)
         b:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(btn.name:sub(1,1):upper()..btn.name:sub(2))
+            GameTooltip:AddLine("Left-click: open menu", 0.6, 0.6, 0.6)
+            GameTooltip:AddLine("Right-click: cast selected", 0.6, 0.6, 0.6)
             GameTooltip:Show()
         end)
         b:SetScript("OnLeave", function()
