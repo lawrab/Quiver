@@ -150,11 +150,16 @@ local function PopulateMenu(menu)
             if entry.showCooldown and entry.spell then
                 local cd = CreateFrame("Cooldown", nil, b)
                 cd:SetAllPoints(b)
-                cd:SetDrawEdge(false)
-                cd:SetSwipeColor(0, 0, 0, 0.8)
                 b.cdFrame = cd
                 b.cdSpell = entry.spell
-                local cdText = b:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+                -- Dark tint over the icon — definitely visible even if Cooldown
+                -- frame sweep doesn't render in this WoW build.
+                local cdDim = b:CreateTexture(nil, "OVERLAY")
+                cdDim:SetAllPoints(b)
+                cdDim:SetTexture(0, 0, 0, 0.65)
+                cdDim:Hide()
+                b.cdDim = cdDim
+                local cdText = b:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
                 cdText:SetPoint("CENTER", b, "CENTER", 0, 0)
                 cdText:SetTextColor(1, 1, 1)
                 cdText:Hide()
@@ -339,17 +344,19 @@ function Menus:UpdateTrapCooldowns()
     local trapMenu = self.menus and self.menus.traps
     if not trapMenu then return end
     for _, b in ipairs(trapMenu.buttons) do
-        if b.cdFrame and b.cdSpell then
+        if b.cdSpell then
             local start, duration = GetSpellCooldown(b.cdSpell)
-            if duration and duration > 1.5 then
-                b.cdFrame:SetCooldown(start, duration)
-                local remaining = start + duration - GetTime()
-                if remaining > 0 and b.cdText then
+            local remaining = (start and duration and duration > 1.5) and (start + duration - GetTime()) or 0
+            if remaining > 0 then
+                if b.cdFrame then b.cdFrame:SetCooldown(start, duration) end
+                if b.cdDim  then b.cdDim:Show() end
+                if b.cdText then
                     b.cdText:SetText(remaining >= 10 and math.floor(remaining) or string.format("%.1f", remaining))
                     b.cdText:Show()
                 end
             else
-                b.cdFrame:SetCooldown(0, 0)
+                if b.cdFrame then b.cdFrame:SetCooldown(0, 0) end
+                if b.cdDim  then b.cdDim:Hide() end
                 if b.cdText then b.cdText:Hide() end
             end
         end
