@@ -1,0 +1,38 @@
+## Interface: 20504
+## Title: Quiver
+## Notes: Hunter class mod for TBC Anniversary - Necrosis-style circular sphere UI
+## Author: lrabbets
+## Version: 0.1.0
+## DefaultState: Enabled
+## SavedVariables: QuiverDB
+## SavedVariablesPerCharacter: QuiverCharDB
+
+# Libraries
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\AceAddon-3.0\AceAddon-3.0.lua
+Libs\AceEvent-3.0\AceEvent-3.0.lua
+Libs\AceDB-3.0\AceDB-3.0.lua
+Libs\AceGUI-3.0\AceGUI-3.0.lua
+Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
+
+# Locales
+Locales\enUS.lua
+
+# Core
+Core\Core.lua
+
+# Modules
+Modules\Ammo.lua
+Modules\Aspects.lua
+Modules\Pet.lua
+Modules\Stings.lua
+Modules\Traps.lua
+Modules\Tracking.lua
+
+# UI
+UI\Sphere.lua
+UI\Menus.lua
+
+# Entry point
+Quiver.lua
