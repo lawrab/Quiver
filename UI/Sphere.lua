@@ -80,6 +80,14 @@ function Sphere:Initialize()
     f:SetScript("PostClick", function(self, button)
         if button == "RightButton" and IsAltKeyDown() then
             Quiver.UI.Config:Toggle()
+            return
+        end
+        local lc = Quiver.db.profile.sphere.leftClick
+        local rc = Quiver.db.profile.sphere.rightClick
+        if button == "LeftButton" and lc == "none" then
+            UIErrorsFrame:AddMessage("Quiver: No left-click spell set  \226\128\148  Alt+Right-click to configure", 1, 0.82, 0)
+        elseif button == "RightButton" and rc == "none" then
+            UIErrorsFrame:AddMessage("Quiver: No right-click spell set  \226\128\148  Alt+Right-click to configure", 1, 0.82, 0)
         end
     end)
 
