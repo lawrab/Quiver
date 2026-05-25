@@ -148,11 +148,17 @@ local function PopulateMenu(menu)
             end
             local b = MakeActionButton(entry.label, icon, castTarget)
             if entry.showCooldown and entry.spell then
-                local cd = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
+                local cd = CreateFrame("Cooldown", nil, b)
                 cd:SetAllPoints(b)
                 cd:SetDrawEdge(false)
+                cd:SetSwipeColor(0, 0, 0, 0.8)
                 b.cdFrame = cd
                 b.cdSpell = entry.spell
+                local cdText = b:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+                cdText:SetPoint("CENTER", b, "CENTER", 0, 0)
+                cdText:SetTextColor(1, 1, 1)
+                cdText:Hide()
+                b.cdText = cdText
             end
             local capturedEntry = entry
             b:SetScript("PostClick", function(_, button)
@@ -315,6 +321,9 @@ function Menus:Toggle(menuName)
         b:SetAlpha(1)
     end
     activeMenu = menuName
+    if menuName == "traps" then
+        self:UpdateTrapCooldowns()
+    end
 end
 
 function Menus:HideAll()
@@ -334,8 +343,14 @@ function Menus:UpdateTrapCooldowns()
             local start, duration = GetSpellCooldown(b.cdSpell)
             if duration and duration > 1.5 then
                 b.cdFrame:SetCooldown(start, duration)
+                local remaining = start + duration - GetTime()
+                if remaining > 0 and b.cdText then
+                    b.cdText:SetText(remaining >= 10 and math.floor(remaining) or string.format("%.1f", remaining))
+                    b.cdText:Show()
+                end
             else
                 b.cdFrame:SetCooldown(0, 0)
+                if b.cdText then b.cdText:Hide() end
             end
         end
     end
@@ -393,4 +408,15 @@ function Menus:Initialize()
     Quiver:RegisterEvent("SPELLS_CHANGED", function() Menus:RebuildAll() end)
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() Menus:RebuildAll() end)
     Quiver:RegisterEvent("PLAYER_REGEN_ENABLED", function() Menus:RebuildAll() end)
+
+    -- Live countdown while the trap menu is open
+    local cdTicker = CreateFrame("Frame")
+    local elapsed = 0
+    cdTicker:SetScript("OnUpdate", function(_, dt)
+        elapsed = elapsed + dt
+        if elapsed >= 0.1 and activeMenu == "traps" then
+            elapsed = 0
+            Menus:UpdateTrapCooldowns()
+        end
+    end)
 end
