@@ -141,6 +141,10 @@ local function PopulateMenu(menu)
     end
 end
 
+function Menus:GetKnownSpells()
+    return knownSpellCache
+end
+
 function Menus:RebuildAll()
     if InCombatLockdown() then return end
     RefreshSpellCache()

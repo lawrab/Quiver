@@ -8,45 +8,88 @@ Quiver.UI.Config = Config
 local AceGUI = LibStub("AceGUI-3.0")
 local panel = nil
 
-local ACTION_TYPES = { none = "None", spell = "Cast Spell", macro = "Run Macro" }
+-- Ordered list of hunter spells offered as sphere bindings.
+-- Filtered to known-only at build time via Menus spell cache.
+local SPHERE_SPELLS = {
+    "Hunter's Mark",
+    "Feign Death",
+    "Misdirection",
+    "Rapid Fire",
+    "Bestial Wrath",
+    "Kill Command",
+    "Intimidation",
+    "Flare",
+    "Multi-Shot",
+    "Aimed Shot",
+    "Steady Shot",
+    "Arcane Shot",
+    "Volley",
+    "Wing Clip",
+    "Concussive Shot",
+    "Counter Attack",
+    "Aspect of the Hawk",
+    "Aspect of the Viper",
+    "Aspect of the Cheetah",
+    "Aspect of the Pack",
+    "Aspect of the Wild",
+    "Aspect of the Monkey",
+    "Aspect of the Dragonhawk",
+    "Serpent Sting",
+    "Viper Sting",
+    "Scorpid Sting",
+    "Wyvern Sting",
+    "Frost Trap",
+    "Freezing Trap",
+    "Immolation Trap",
+    "Explosive Trap",
+    "Snake Trap",
+    "Call Pet",
+    "Dismiss Pet",
+    "Revive Pet",
+    "Mend Pet",
+    "Beast Training",
+}
+
+local function BuildSpellList()
+    local cache = Quiver.UI.Menus:GetKnownSpells()
+    local items = { none = "None" }
+    local order = { "none" }
+    for _, spell in ipairs(SPHERE_SPELLS) do
+        if cache[spell] then
+            items[spell] = spell
+            table.insert(order, spell)
+        end
+    end
+    return items, order
+end
 
 local function Build()
+    local items, order = BuildSpellList()
+
     local f = AceGUI:Create("Frame")
     f:SetTitle("Quiver Settings")
-    f:SetStatusText("Alt+Right-click the sphere to reopen")
+    f:SetStatusText("Alt+Right-click sphere to reopen")
     f:SetLayout("List")
-    f:SetWidth(400)
-    f:SetHeight(260)
+    f:SetWidth(300)
+    f:SetHeight(190)
     f:SetCallback("OnClose", function(widget)
         AceGUI:Release(widget)
         panel = nil
     end)
 
-    local function AddClickSection(parent, title, dbKey)
-        local grp = AceGUI:Create("InlineGroup")
-        grp:SetTitle(title)
-        grp:SetLayout("Flow")
-        grp:SetFullWidth(true)
-        parent:AddChild(grp)
+    local lcDrop = AceGUI:Create("Dropdown")
+    lcDrop:SetLabel("Left Click")
+    lcDrop:SetList(items, order)
+    lcDrop:SetValue(Quiver.db.profile.sphere.leftClick)
+    lcDrop:SetFullWidth(true)
+    f:AddChild(lcDrop)
 
-        local typeDropdown = AceGUI:Create("Dropdown")
-        typeDropdown:SetLabel("Action")
-        typeDropdown:SetList(ACTION_TYPES)
-        typeDropdown:SetValue(Quiver.db.profile.sphere[dbKey].type)
-        typeDropdown:SetWidth(150)
-        grp:AddChild(typeDropdown)
-
-        local valueBox = AceGUI:Create("EditBox")
-        valueBox:SetLabel("Spell name or macro text")
-        valueBox:SetText(Quiver.db.profile.sphere[dbKey].value)
-        valueBox:SetWidth(210)
-        grp:AddChild(valueBox)
-
-        return typeDropdown, valueBox
-    end
-
-    local lcType, lcValue = AddClickSection(f, "Left Click",  "leftClick")
-    local rcType, rcValue = AddClickSection(f, "Right Click", "rightClick")
+    local rcDrop = AceGUI:Create("Dropdown")
+    rcDrop:SetLabel("Right Click")
+    rcDrop:SetList(items, order)
+    rcDrop:SetValue(Quiver.db.profile.sphere.rightClick)
+    rcDrop:SetFullWidth(true)
+    f:AddChild(rcDrop)
 
     local apply = AceGUI:Create("Button")
     apply:SetText("Apply")
@@ -56,10 +99,8 @@ local function Build()
             print("|cffff4444Quiver:|r Cannot change settings during combat.")
             return
         end
-        Quiver.db.profile.sphere.leftClick.type   = lcType:GetValue()
-        Quiver.db.profile.sphere.leftClick.value  = lcValue:GetText()
-        Quiver.db.profile.sphere.rightClick.type  = rcType:GetValue()
-        Quiver.db.profile.sphere.rightClick.value = rcValue:GetText()
+        Quiver.db.profile.sphere.leftClick  = lcDrop:GetValue()
+        Quiver.db.profile.sphere.rightClick = rcDrop:GetValue()
         Quiver.UI.Sphere:UpdateOnClick()
         AceGUI:Release(f)
         panel = nil

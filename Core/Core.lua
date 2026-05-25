@@ -10,8 +10,8 @@ Quiver.defaults = {
             y = -200,
             scale = 1.0,
             locked = false,
-            leftClick  = { type = "none", value = "" },
-            rightClick = { type = "none", value = "" },
+            leftClick  = "none",
+            rightClick = "none",
         },
         ammoWarnThreshold = 100,
         sounds = {

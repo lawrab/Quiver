@@ -65,11 +65,11 @@ function Sphere:Initialize()
         GameTooltip:AddLine("Quiver", 1, 0.82, 0)
         local lc = Quiver.db.profile.sphere.leftClick
         local rc = Quiver.db.profile.sphere.rightClick
-        if lc.type ~= "none" and lc.value ~= "" then
-            GameTooltip:AddLine("Left-click: " .. lc.value, 1, 1, 1)
+        if lc ~= "none" then
+            GameTooltip:AddLine("Left-click: " .. lc, 1, 1, 1)
         end
-        if rc.type ~= "none" and rc.value ~= "" then
-            GameTooltip:AddLine("Right-click: " .. rc.value, 1, 1, 1)
+        if rc ~= "none" then
+            GameTooltip:AddLine("Right-click: " .. rc, 1, 1, 1)
         end
         GameTooltip:AddLine("Alt+Right-click: Settings", 0.6, 0.6, 0.6)
         GameTooltip:Show()
@@ -162,22 +162,14 @@ function Sphere:UpdateOnClick()
     f:SetAttribute("alt-type2", nil)
     f:SetAttribute("alt-macrotext2", nil)
 
-    if lc.type == "spell" and lc.value ~= "" then
+    if lc ~= "none" then
         f:SetAttribute("type1", "macro")
-        f:SetAttribute("macrotext1", "/cast " .. lc.value)
-    elseif lc.type == "macro" and lc.value ~= "" then
-        f:SetAttribute("type1", "macro")
-        f:SetAttribute("macrotext1", lc.value)
+        f:SetAttribute("macrotext1", "/cast " .. lc)
     end
 
-    if rc.type == "spell" and rc.value ~= "" then
+    if rc ~= "none" then
         f:SetAttribute("type2", "macro")
-        f:SetAttribute("macrotext2", "/cast " .. rc.value)
-        f:SetAttribute("alt-type2", "macro")
-        f:SetAttribute("alt-macrotext2", "")
-    elseif rc.type == "macro" and rc.value ~= "" then
-        f:SetAttribute("type2", "macro")
-        f:SetAttribute("macrotext2", rc.value)
+        f:SetAttribute("macrotext2", "/cast " .. rc)
         f:SetAttribute("alt-type2", "macro")
         f:SetAttribute("alt-macrotext2", "")
     end
