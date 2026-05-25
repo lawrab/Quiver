@@ -82,12 +82,12 @@ function Sphere:Initialize()
         end
     end)
 
+    self.frame = f
     self:SetupDrag(f)
     self:SetupMenuButtons(f)
     self:UpdateOnClick()
 
     f:Show()
-    self.frame = f
 end
 
 function Sphere:SetupDrag(f)
