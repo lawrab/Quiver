@@ -77,10 +77,6 @@ function Sphere:Initialize()
     end)
     f:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-    f:SetScript("OnUpdate", function()
-        Sphere:_UpdatePulse()
-    end)
-
     f:SetScript("PostClick", function(self, button)
         if button == "RightButton" and IsAltKeyDown() then
             Quiver.UI.Config:Toggle()
@@ -102,6 +98,11 @@ function Sphere:Initialize()
     self:UpdateOnClick()
 
     f:Show()
+
+    -- Separate plain frame for animation — SecureActionButtonTemplate can block OnUpdate
+    local ticker = CreateFrame("Frame", nil, UIParent)
+    ticker:SetScript("OnUpdate", function() Sphere:_UpdatePulse() end)
+    self.ticker = ticker
 end
 
 function Sphere:SetupDrag(f)
@@ -202,8 +203,8 @@ end
 
 function Sphere:_UpdatePulse()
     if not self.pulsingAspect or not self.overlay then return end
-    local alpha = (math.sin(GetTime() * math.pi) + 1) / 2 * 0.35
-    self.overlay:SetVertexColor(0.75, 0.75, 0.9, alpha)
+    local alpha = (math.sin(GetTime() * math.pi) + 1) / 2 * 0.7
+    self.overlay:SetVertexColor(1, 1, 1, alpha)
 end
 
 function Sphere:StartAspectPulse()
