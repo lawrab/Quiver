@@ -128,6 +128,15 @@ local function PopulateMenu(menu)
         local hintId = GetSpellId(triggerBtn.spellHint or "")
         local hintTarget = hintId or triggerBtn.spellHint or ""
         local _, _, icon = GetSpellInfo(hintTarget)
+        -- Fall back to the first known entry's explicit icon (e.g. traps have hardcoded icons)
+        if not icon then
+            for _, entry in ipairs(menu.entries) do
+                if (not entry.spell or IsSpellKnown(entry.spell)) and entry.icon then
+                    icon = entry.icon
+                    break
+                end
+            end
+        end
         if icon then
             triggerBtn:SetNormalTexture(icon)
             triggerBtn:SetPushedTexture(icon)
