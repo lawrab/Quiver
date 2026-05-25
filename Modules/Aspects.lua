@@ -29,6 +29,18 @@ function Aspects:Enable()
     end)
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:DetectCurrentAspect() end)
     self:DetectCurrentAspect()
+
+    -- Poll every second to catch aspect removal; UNIT_AURA doesn't fire
+    -- reliably when aspects are cancelled in TBC Classic Anniversary.
+    local elapsed = 0
+    local ticker = CreateFrame("Frame")
+    ticker:SetScript("OnUpdate", function(_, dt)
+        elapsed = elapsed + dt
+        if elapsed >= 1.0 then
+            elapsed = 0
+            self:DetectCurrentAspect()
+        end
+    end)
 end
 
 function Aspects:DetectCurrentAspect()
