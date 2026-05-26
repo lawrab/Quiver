@@ -4,7 +4,7 @@ A hunter class addon for **WoW TBC Classic Anniversary** (Interface 20504), mode
 
 ## How it works
 
-A circular **sphere** sits on screen as your central hub. Four small buttons orbit it, one per mechanic category. Left-clicking a button opens that category's radial menu; right-clicking fires a quick-cast of your last selected spell from that menu. The sphere itself can be left- and right-click bound to any spell (Hunter's Mark, Feign Death, etc.) via the settings panel (Alt+Right-click the sphere).
+A circular **sphere** sits on screen as your central hub. Five small buttons orbit it, one per mechanic category. Left-clicking a button opens that category's menu; right-clicking fires a quick-cast of your last selection from that menu. The sphere itself can be left- and right-click bound to any spell (Hunter's Mark, Feign Death, etc.) via the settings panel (Alt+Right-click the sphere).
 
 ### The sphere
 
@@ -15,18 +15,25 @@ A circular **sphere** sits on screen as your central hub. Four small buttons orb
 
 ### The menus
 
-Each of the four orbit buttons opens a row of spell icons:
+Each of the five orbit buttons opens a row of icons:
 
-| Button | Spells |
+| Button | What it does |
 |---|---|
 | **Aspects** | Hawk, Viper, Cheetah, Pack, Wild, Monkey, Dragonhawk — only shows aspects you've learned |
 | **Pet** | Call, Dismiss, Revive, Mend, Beast Training |
 | **Traps** | Frost, Freezing, Immolation, Explosive, Snake — with live cooldown countdown |
 | **Tracking** | Beasts, Humanoids, Demons, Undead, Giants, Elementals, Hidden |
+| **Feed Pet** | Shows up to five suitable foods from your bags, sorted by item level |
 
-Left-clicking a spell in the menu **selects** it as your quick-cast for that button. Right-clicking casts it immediately. The orbit button's icon updates to show your current selection. If the selected spell is on cooldown, a dark overlay and live countdown (e.g. `9.3`) appear on the button.
+For the spell menus (Aspects, Pet, Traps, Tracking): left-clicking a spell **selects** it as your quick-cast for that button; right-clicking casts it immediately. The orbit button's icon updates to show your current selection. If the selected spell is on cooldown, a dark overlay and live countdown (e.g. `9.3`) appear on the button.
 
 Menus only show spells you've actually learned — if you haven't trained a spell yet, it doesn't appear.
+
+### Feed Pet
+
+The food picker shows foods your pet can actually eat (Meat, Fish, Bread, Cheese, Fruit, or Fungus depending on pet type), pulled from your bags and sorted by item level. Left-click a food in the picker to **select** it — the orbit button updates to that food's icon and shows a stack count badge. Right-click the orbit button at any time to feed immediately. Right-click a food in the open picker to feed with that food without changing your selection.
+
+The stack count on the orbit button updates in real time as you feed or pick up food.
 
 ### Trap cooldowns
 
