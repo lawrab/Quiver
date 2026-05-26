@@ -497,7 +497,7 @@ function Menus:RebuildFoodPicker()
     if #foodPickerButtons == 0 then return end
     local anchor = _G["QuiverBtn_food"]
     if not anchor then
-        Quiver:Print("Quiver: QuiverBtn_food not found, food picker cannot be positioned")
+        print("Quiver: QuiverBtn_food not found, food picker cannot be positioned")
         return
     end
     for i, b in ipairs(foodPickerButtons) do

@@ -49,7 +49,7 @@ end
 
 function Pet:GetSuitableFood()
     if not self.exists then
-        Quiver:Print("Quiver Food: no pet active")
+        print("Quiver Food: no pet active")
         return {}
     end
 
@@ -57,7 +57,7 @@ function Pet:GetSuitableFood()
     for _, ft in ipairs({GetPetFoodTypes()}) do
         foodTypes[ft] = true
     end
-    Quiver:Print("Quiver Food: pet accepts " .. (next(foodTypes) and table.concat((function() local t={} for k in pairs(foodTypes) do t[#t+1]=k end return t end)(), ", ") or "nothing"))
+    print("Quiver Food: pet accepts " .. (next(foodTypes) and table.concat((function() local t={} for k in pairs(foodTypes) do t[#t+1]=k end return t end)(), ", ") or "nothing"))
     if not next(foodTypes) then return {} end
 
     local byName = {}
@@ -83,9 +83,9 @@ function Pet:GetSuitableFood()
 
     local result = {}
     for i = 1, math.min(5, #sorted) do result[i] = sorted[i] end
-    Quiver:Print("Quiver Food: found " .. #result .. " food item(s)")
+    print("Quiver Food: found " .. #result .. " food item(s)")
     for i, f in ipairs(result) do
-        Quiver:Print("  [" .. i .. "] " .. f.name .. " (ilvl " .. f.itemLevel .. ") x" .. f.count)
+        print("  [" .. i .. "] " .. f.name .. " (ilvl " .. f.itemLevel .. ") x" .. f.count)
     end
     return result
 end
