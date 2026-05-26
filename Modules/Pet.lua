@@ -27,6 +27,7 @@ function Pet:Enable()
 end
 
 function Pet:UpdateState()
+    local wasExists = self.exists
     self.exists = UnitExists("pet")
     if self.exists then
         self.happiness = GetPetHappiness()
@@ -34,9 +35,11 @@ function Pet:UpdateState()
         self.happiness = nil
     end
     Quiver.UI.Sphere:UpdatePetIndicator()
-    Quiver.UI.Menus:RebuildFoodPicker()
+    if self.exists ~= wasExists then
+        Quiver.UI.Menus:RebuildFoodPicker()
+    end
 
-    if self.happiness == 1 and Quiver.db.profile.sounds.ammoLow then
+    if self.happiness == 1 and Quiver.db.profile.sounds.petUnhappy then
         -- PlaySoundFile("Interface\\AddOns\\Quiver\\Media\\Sounds\\pet_unhappy.ogg")
     end
 end
@@ -66,16 +69,21 @@ function Pet:GetSuitableFood()
             if info and info.itemID then
                 local isPetBuff = petBuffIDs[info.itemID] == true
                 if isPetBuff or db:IsPetFood(info.itemID, foodTypes) then
-                    local name, _, itemLevel = GetItemInfo(info.itemID)
+                    local name, _, itemLevel, _, _, _, _, _, _, itemIcon = GetItemInfo(info.itemID)
                     if name then
                         if byName[name] then
                             byName[name].count = byName[name].count + (info.stackCount or 1)
                         else
+                            -- iconFileID from container is always present for bag items;
+                            -- itemIcon from GetItemInfo is the fallback if iconFileID is 0
+                            local icon = (info.iconFileID and info.iconFileID ~= 0) and info.iconFileID
+                                         or (itemIcon and itemIcon ~= 0) and itemIcon
+                                         or nil
                             byName[name] = {
                                 name      = name,
                                 itemLevel = itemLevel or 0,
                                 count     = info.stackCount or 1,
-                                icon      = info.iconFileID,
+                                icon      = icon,
                                 itemID    = info.itemID,
                                 isPetBuff = isPetBuff,
                             }

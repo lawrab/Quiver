@@ -63,14 +63,19 @@ function Sphere:Initialize()
     f:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine("Quiver", 1, 0.82, 0)
-        local lc = Quiver.db.profile.sphere.leftClick
-        local rc = Quiver.db.profile.sphere.rightClick
-        if lc ~= "none" then
-            GameTooltip:AddLine("Left-click: " .. lc, 1, 1, 1)
+        local sp     = Quiver.db.profile.sphere
+        local lcType = sp.leftType  or "spell"
+        local rcType = sp.rightType or "spell"
+        local function BindingLabel(bType, spell, macro)
+            if bType == "spell" and spell ~= "none" then return spell end
+            if bType == "macro" and (macro or "") ~= "" then
+                return (macro:match("([^\n]+)") or "[Macro]")
+            end
         end
-        if rc ~= "none" then
-            GameTooltip:AddLine("Right-click: " .. rc, 1, 1, 1)
-        end
+        local lcLabel = BindingLabel(lcType, sp.leftClick,  sp.leftMacro)
+        local rcLabel = BindingLabel(rcType, sp.rightClick, sp.rightMacro)
+        if lcLabel then GameTooltip:AddLine("Left-click: "  .. lcLabel, 1, 1, 1) end
+        if rcLabel then GameTooltip:AddLine("Right-click: " .. rcLabel, 1, 1, 1) end
         GameTooltip:AddLine("Middle-click: Drag", 0.6, 0.6, 0.6)
         GameTooltip:AddLine("Alt+Right-click: Settings", 0.6, 0.6, 0.6)
         GameTooltip:Show()
@@ -78,6 +83,7 @@ function Sphere:Initialize()
     f:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     f:SetScript("PostClick", function(self, button)
+        Sphere:TriggerClickAnim()
         if button == "RightButton" and IsAltKeyDown() then
             Quiver.UI.Config:Toggle()
             return
@@ -91,6 +97,17 @@ function Sphere:Initialize()
         end
     end)
 
+    -- Ripple ring that expands outward on sphere click
+    local ripple = f:CreateTexture(nil, "OVERLAY")
+    ripple:SetTexture("Interface\\AddOns\\Quiver\\Media\\ring")
+    ripple:SetPoint("CENTER", f, "CENTER", 0, 0)
+    ripple:SetWidth(SPHERE_SIZE)
+    ripple:SetHeight(SPHERE_SIZE)
+    ripple:SetAlpha(0)
+    self.ripple     = ripple
+    self.rippleT    = nil
+    self.rippleDur  = 0.35
+
     self.pulseColor = nil
     self.frame = f
     self:SetupDrag(f)
@@ -101,7 +118,10 @@ function Sphere:Initialize()
 
     -- Separate plain frame for animation — SecureActionButtonTemplate can block OnUpdate
     local ticker = CreateFrame("Frame", nil, UIParent)
-    ticker:SetScript("OnUpdate", function() Sphere:_UpdatePulse() end)
+    ticker:SetScript("OnUpdate", function(_, dt)
+        Sphere:_UpdatePulse()
+        Sphere:_UpdateRipple(dt)
+    end)
     self.ticker = ticker
 end
 
@@ -220,13 +240,14 @@ function Sphere:UpdateOnClick()
     local f = self.frame
     if not f or InCombatLockdown() then return end
 
-    local lc = Quiver.db.profile.sphere.leftClick
-    local rc = Quiver.db.profile.sphere.rightClick
+    local sp     = Quiver.db.profile.sphere
+    local lc     = sp.leftClick
+    local rc     = sp.rightClick
+    local lcType = sp.leftType  or "spell"
+    local rcType = sp.rightType or "spell"
 
     f:SetAttribute("type", nil)
     f:SetAttribute("macrotext", nil)
-    -- Always set explicit handlers for right (2) and middle (3) so they don't
-    -- fall through to the left-click catch-all bare "type" attribute.
     f:SetAttribute("type2", "macro")
     f:SetAttribute("macrotext2", "")
     f:SetAttribute("alt-type2", nil)
@@ -234,13 +255,20 @@ function Sphere:UpdateOnClick()
     f:SetAttribute("type3", "macro")
     f:SetAttribute("macrotext3", "")
 
-    if lc ~= "none" then
+    if lcType == "spell" and lc ~= "none" then
         f:SetAttribute("type", "macro")
         f:SetAttribute("macrotext", "/cast " .. lc)
+    elseif lcType == "macro" and (sp.leftMacro or "") ~= "" then
+        f:SetAttribute("type", "macro")
+        f:SetAttribute("macrotext", sp.leftMacro)
     end
 
-    if rc ~= "none" then
+    if rcType == "spell" and rc ~= "none" then
         f:SetAttribute("macrotext2", "/cast " .. rc)
+        f:SetAttribute("alt-type2", "macro")
+        f:SetAttribute("alt-macrotext2", "")
+    elseif rcType == "macro" and (sp.rightMacro or "") ~= "" then
+        f:SetAttribute("macrotext2", sp.rightMacro)
         f:SetAttribute("alt-type2", "macro")
         f:SetAttribute("alt-macrotext2", "")
     end
@@ -324,4 +352,24 @@ end
 
 function Sphere:UpdateTrackingIndicator()
     -- TODO: show small tracking icon on sphere edge
+end
+
+function Sphere:TriggerClickAnim()
+    self.rippleT = 0
+end
+
+function Sphere:_UpdateRipple(dt)
+    if self.rippleT == nil then return end
+    self.rippleT = self.rippleT + dt
+    local progress = self.rippleT / self.rippleDur
+    if progress >= 1 then
+        self.rippleT = nil
+        self.ripple:SetAlpha(0)
+        self.ripple:SetWidth(SPHERE_SIZE)
+        self.ripple:SetHeight(SPHERE_SIZE)
+        return
+    end
+    self.ripple:SetWidth(SPHERE_SIZE * (1 + progress * 1.5))
+    self.ripple:SetHeight(SPHERE_SIZE * (1 + progress * 1.5))
+    self.ripple:SetAlpha(0.75 * (1 - progress))
 end

@@ -12,6 +12,10 @@ Quiver.defaults = {
             locked = false,
             leftClick  = "none",
             rightClick = "none",
+            leftType   = "spell",
+            rightType  = "spell",
+            leftMacro  = "",
+            rightMacro = "",
         },
         ammoWarnThreshold = 100,
         sounds = {

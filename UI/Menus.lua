@@ -465,10 +465,34 @@ end
 
 function Menus:HideFoodPicker()
     for _, b in ipairs(foodPickerButtons) do
+        b:SetButtonState("NORMAL")
         b:SetAlpha(0)
         b:EnableMouse(false)
     end
     foodPickerOpen = false
+end
+
+local function SetFoodOrbitIcon(btn, icon)
+    -- NormalTexture/PushedTexture don't visually render numeric fileIDs on
+    -- SecureActionButtonTemplate children in TBC Classic Anniversary.
+    -- Use a dedicated OVERLAY texture (same approach as ContainerFrameItemButton).
+    -- The PushedTexture (string path set at creation) renders ABOVE OVERLAY when
+    -- the button is pressed, covering the icon. Overwrite it with the numeric ID
+    -- so it becomes transparent during press, letting the OVERLAY show through.
+    if not btn._foodIconTex then
+        local t = btn:CreateTexture(nil, "OVERLAY")
+        t:SetAllPoints(btn)
+        btn._foodIconTex = t
+    end
+    local pt = btn:GetPushedTexture()
+    if icon then
+        btn._foodIconTex:SetTexture(icon)
+        btn._foodIconTex:Show()
+        if pt then pt:SetTexture(icon) end
+    else
+        btn._foodIconTex:Hide()
+        if pt then pt:SetTexture("Interface\\Buttons\\UI-Quickslot-Depress") end
+    end
 end
 
 function Menus:SelectFood(food)
@@ -478,9 +502,20 @@ function Menus:SelectFood(food)
     Quiver.db.char.menuSelections["foodIsBuff"]  = food.isPetBuff == true
     local btn = _G["QuiverBtn_food"]
     if btn then
-        local icon = food.icon or "Interface\\Buttons\\UI-Quickslot2"
-        btn:SetNormalTexture(icon)
-        btn:SetPushedTexture(icon)
+        local icon = food.icon
+        if not icon or icon == 0 then
+            for bag = 0, 4 do
+                for slot = 1, C_Container.GetContainerNumSlots(bag) do
+                    local si = C_Container.GetContainerItemInfo(bag, slot)
+                    if si and si.itemID == food.itemID and (si.iconFileID or 0) ~= 0 then
+                        icon = si.iconFileID; break
+                    end
+                end
+                if icon and icon ~= 0 then break end
+            end
+        end
+        if not icon or icon == 0 then icon = select(10, GetItemInfo(food.itemID)) end
+        SetFoodOrbitIcon(btn, icon)
         btn:SetAlpha(1.0)
         local macro = food.isPetBuff
             and ("/use " .. food.name)
@@ -502,14 +537,35 @@ function Menus:SelectFood(food)
     self:HideFoodPicker()
 end
 
+function Menus:RefreshFoodOrbitCount()
+    local btn = _G["QuiverBtn_food"]
+    if not btn or not btn.countText then return end
+    local totalCount = 0
+    local savedID = Quiver.db and Quiver.db.char.menuSelections["foodID"]
+    if savedID then
+        for bag = 0, 4 do
+            for slot = 1, C_Container.GetContainerNumSlots(bag) do
+                local info = C_Container.GetContainerItemInfo(bag, slot)
+                if info and info.itemID == savedID then
+                    totalCount = totalCount + (info.stackCount or 1)
+                end
+            end
+        end
+    end
+    btn.countText:SetText(totalCount > 1 and tostring(totalCount) or "")
+end
+
 function Menus:RefreshFoodPicker()
     local foods = Quiver.Modules.Pet:GetSuitableFood()
-    local savedName = Quiver.db and Quiver.db.char.menuSelections["food"]
-
     for i, b in ipairs(foodPickerButtons) do
         local food = foods[i]
         if food then
-            b:SetNormalTexture(food.icon or "Interface\\Buttons\\UI-Quickslot2")
+            local icon = food.icon
+            if not icon or icon == 0 then
+                icon = select(10, GetItemInfo(food.itemID))
+            end
+            b:SetNormalTexture(icon or "Interface\\Buttons\\UI-Quickslot2")
+            b:SetPushedTexture(icon or "Interface\\Buttons\\UI-Quickslot-Depress")
             b.countText:SetText(food.count > 1 and tostring(food.count) or "")
             b.itemID = food.itemID
             b.itemName = food.name
@@ -527,9 +583,8 @@ function Menus:RefreshFoodPicker()
                 b:SetScript("PostClick", function(_, button)
                     if button == "LeftButton" then
                         Menus:SelectFood(capturedFood)
-                    elseif button == "RightButton" then
-                        Menus:HideFoodPicker()
                     end
+                    -- right-click: secure macro feeds pet; picker stays open so counts update live
                 end)
             end
         else
@@ -547,25 +602,7 @@ function Menus:RefreshFoodPicker()
         end
     end
 
-    -- Keep orbit button count fresh via direct bag scan (handles 0 and items not in top-5)
-    local btn = _G["QuiverBtn_food"]
-    if btn and btn.countText then
-        local totalCount = 0
-        if savedName then
-            for bag = 0, 4 do
-                for slot = 1, C_Container.GetContainerNumSlots(bag) do
-                    local info = C_Container.GetContainerItemInfo(bag, slot)
-                    if info and info.itemID then
-                        local name = GetItemInfo(info.itemID)
-                        if name == savedName then
-                            totalCount = totalCount + (info.stackCount or 1)
-                        end
-                    end
-                end
-            end
-        end
-        btn.countText:SetText(totalCount > 1 and tostring(totalCount) or "")
-    end
+    self:RefreshFoodOrbitCount()
 end
 
 function Menus:UpdateFoodOrbitButton()
@@ -598,57 +635,57 @@ function Menus:RebuildFoodPicker()
     end
     self:RefreshFoodPicker()
 
-    -- Restore persisted food selection
+    -- Restore orbit button state from saved selection — update icon/macro/tooltip
+    -- directly; never call SelectFood here (that closes the picker as a side effect).
     local savedName = Quiver.db and Quiver.db.char.menuSelections["food"]
+    local btn = _G["QuiverBtn_food"]
+    if not btn or InCombatLockdown() then return end
+
     if savedName then
         local foods = Quiver.Modules.Pet:GetSuitableFood()
+        local foundFood = nil
         for _, food in ipairs(foods) do
-            if food.name == savedName then
-                self:SelectFood(food)
-                return
-            end
+            if food.name == savedName then foundFood = food; break end
         end
-        -- Saved food not in bags (or below top-5): restore macro/icon, leave count alone
-        -- (RefreshFoodPicker already set the count correctly via bag scan above)
-        if not InCombatLockdown() then
-            local btn = _G["QuiverBtn_food"]
-            if btn then
-                local savedID = Quiver.db.char.menuSelections["foodID"]
-                local _, _, _, _, _, _, _, _, _, icon = GetItemInfo(savedID or savedName)
-                if icon then
-                    btn:SetNormalTexture(icon)
-                    btn:SetPushedTexture(icon)
-                end
-                local savedIsBuff = Quiver.db.char.menuSelections["foodIsBuff"]
-                local macro = savedIsBuff
-                    and ("/use " .. savedName)
-                    or  ("/cast Feed Pet\n/use " .. savedName)
-                btn:SetAttribute("type2", "macro")
-                btn:SetAttribute("macrotext2", macro)
-                local verb = savedIsBuff and "Right-click: use " or "Right-click: feed "
-                btn:SetScript("OnEnter", function(self)
-                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                    GameTooltip:AddLine("Feed Pet")
-                    GameTooltip:AddLine(verb .. savedName, 0.4, 1, 0.4)
-                    GameTooltip:AddLine("Left-click: open food picker", 0.6, 0.6, 0.6)
-                    GameTooltip:Show()
-                end)
-            end
+
+        local icon, isPetBuff
+        if foundFood then
+            icon      = foundFood.icon
+            isPetBuff = foundFood.isPetBuff == true
+        else
+            local savedID = Quiver.db.char.menuSelections["foodID"]
+            if savedID then icon = select(10, GetItemInfo(savedID)) end
+            if not icon or icon == 0 then icon = select(10, GetItemInfo(savedName)) end
+            isPetBuff = Quiver.db.char.menuSelections["foodIsBuff"] == true
         end
+        if not icon or icon == 0 then icon = nil end
+
+        SetFoodOrbitIcon(btn, icon)
+        btn:SetAlpha(1.0)
+        local macro = isPetBuff
+            and ("/use " .. savedName)
+            or  ("/cast Feed Pet\n/use " .. savedName)
+        btn:SetAttribute("type2", "macro")
+        btn:SetAttribute("macrotext2", macro)
+        local verb = isPetBuff and "Right-click: use " or "Right-click: feed "
+        btn:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine("Feed Pet")
+            GameTooltip:AddLine(verb .. savedName, 0.4, 1, 0.4)
+            GameTooltip:AddLine("Left-click: open food picker", 0.6, 0.6, 0.6)
+            GameTooltip:Show()
+        end)
     else
-        -- No selection: dim button, no right-click action
-        local btn = _G["QuiverBtn_food"]
-        if btn and not InCombatLockdown() then
-            btn:SetAlpha(0.6)
-            btn:SetAttribute("macrotext2", "")
-            btn:SetScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                GameTooltip:AddLine("Feed Pet")
-                GameTooltip:AddLine("Right-click: no food selected", 0.5, 0.5, 0.5)
-                GameTooltip:AddLine("Left-click: open food picker", 0.6, 0.6, 0.6)
-                GameTooltip:Show()
-            end)
-        end
+        SetFoodOrbitIcon(btn, nil)
+        btn:SetAlpha(0.6)
+        btn:SetAttribute("macrotext2", "")
+        btn:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine("Feed Pet")
+            GameTooltip:AddLine("Right-click: no food selected", 0.5, 0.5, 0.5)
+            GameTooltip:AddLine("Left-click: open food picker", 0.6, 0.6, 0.6)
+            GameTooltip:Show()
+        end)
     end
 end
 
@@ -722,7 +759,13 @@ function Menus:Initialize()
     Quiver:RegisterEvent("SPELLS_CHANGED", function() Menus:RebuildAll() end)
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() Menus:RebuildAll() end)
     Quiver:RegisterEvent("PLAYER_REGEN_ENABLED", function() Menus:RebuildAll() end)
-    Quiver:RegisterEvent("BAG_UPDATE_DELAYED", function() Menus:RefreshFoodPicker() end)
+    Quiver:RegisterEvent("BAG_UPDATE_DELAYED", function()
+        if foodPickerOpen then
+            Menus:RefreshFoodPicker()
+        else
+            Menus:RefreshFoodOrbitCount()
+        end
+    end)
 
     -- Live countdown while the trap menu is open
     local cdTicker = CreateFrame("Frame")

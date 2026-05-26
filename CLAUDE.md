@@ -118,6 +118,21 @@ function Quiver:OnEnable() ... end
 ### Saved variables defaults
 Config stored in `QuiverDB` via AceDB-3.0. Per-character state (like last aspect) in `QuiverCharDB`.
 
+### Button visual state gotchas (hard-won)
+
+**NormalTexture and PushedTexture are mutually exclusive.** When a button is pressed, WoW renders only the PushedTexture — NormalTexture is hidden entirely. Always set both to the same icon so the icon stays visible during a click. This applies to every button showing an item/spell icon.
+
+**Pushed state gets stuck when `EnableMouse(false)` is called mid-press.** WoW tracks pushed state via mouse events. If you call `EnableMouse(false)` while the mouse button is still physically held (common with `RegisterForClicks("AnyDown")` — the click fires on press, before the user releases), the button never receives `OnMouseUp` and stays stuck in PUSHED state. The next time the button is shown it will still be visually depressed. Fix: call `b:SetButtonState("NORMAL")` before hiding/disabling:
+```lua
+b:SetButtonState("NORMAL")
+b:SetAlpha(0)
+b:EnableMouse(false)
+```
+
+**`SetBackdrop` requires `"BackdropTemplate"` in the frame template string on Anniversary clients.** TBC Classic Anniversary runs on a newer client than original 2.5 — `SetBackdrop` was moved to a mixin. Always create backdrop frames as `CreateFrame("Frame", ..., parent, "BackdropTemplate")` or you get a nil-method error.
+
+**`SetNormalTexture`/`SetPushedTexture` don't render numeric fileIDs on `SecureActionButtonTemplate` buttons that are children of another secure frame.** Use `CreateTexture(nil, "OVERLAY")` instead — OVERLAY layer textures accept numeric fileIDs and are always visible regardless of button press state. See `SetFoodOrbitIcon` in `UI/Menus.lua` for the pattern.
+
 ## WoW API Reference
 
 **wow-api-mcp** is configured in `.mcp.json` — use it to look up WoW API functions, events, enums, and widget methods (8000+ entries with full signatures). Falls back to wowpedia.org via web search for anything not covered.
