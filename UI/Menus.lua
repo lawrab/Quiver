@@ -205,6 +205,20 @@ local function PopulateMenu(menu)
         end)
         triggerBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     else
+        -- Restore persisted selection if none loaded yet
+        if not menu.selected then
+            local menuName = menu.triggerName:match("QuiverBtn_(.+)")
+            local saved = menuName and Quiver.db.char.menuSelections[menuName]
+            if saved then
+                for _, entry in ipairs(menu.entries) do
+                    if entry.spell == saved then
+                        menu.selected = entry
+                        break
+                    end
+                end
+            end
+        end
+
         -- Validate stored selection — spell may have become unknown
         if menu.selected and menu.selected.spell and not IsSpellKnown(menu.selected.spell) then
             menu.selected = nil
@@ -280,6 +294,10 @@ end
 
 function Menus:SelectEntry(menu, entry)
     menu.selected = entry
+    local menuName = menu.triggerName:match("QuiverBtn_(.+)")
+    if menuName then
+        Quiver.db.char.menuSelections[menuName] = entry.spell
+    end
 
     -- Update trigger icon
     local triggerBtn = _G[menu.triggerName]
