@@ -151,6 +151,15 @@ function Sphere:SetupMenuButtons(f)
         b:SetPushedTexture(icon or "Interface\\Buttons\\UI-Quickslot-Depress")
         b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
 
+        if btn.name == "food" then
+            local countText = b:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+            countText:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 2, 2)
+            countText:SetTextColor(1, 1, 1)
+            b.countText = countText
+            b:SetAttribute("type2", "macro")
+            b:SetAttribute("macrotext2", "")
+        end
+
         if btn.name == "traps" then
             local cdDim = b:CreateTexture(nil, "OVERLAY")
             cdDim:SetAllPoints(b)

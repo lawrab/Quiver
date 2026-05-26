@@ -48,47 +48,31 @@ function Pet:GetHappinessColor()
 end
 
 function Pet:GetSuitableFood()
-    if not self.exists then
-        print("Quiver Food: no pet active")
-        return {}
-    end
+    if not self.exists then return {} end
 
     local foodTypes = {}
     for _, ft in ipairs({GetPetFoodTypes()}) do
         foodTypes[ft] = true
     end
-    print("Quiver Food: pet accepts " .. (next(foodTypes) and table.concat((function() local t={} for k in pairs(foodTypes) do t[#t+1]=k end return t end)(), ", ") or "nothing"))
     if not next(foodTypes) then return {} end
 
+    local db = Quiver.Data.PetFoods
     local byName = {}
-    local dbgTotal, dbgConsumable, dbgMatched = 0, 0, 0
     for bag = 0, 4 do
         for slot = 1, C_Container.GetContainerNumSlots(bag) do
             local info = C_Container.GetContainerItemInfo(bag, slot)
-            if info and info.itemID then
-                dbgTotal = dbgTotal + 1
-                local name, _, itemLevel, _, _, itemType, itemSubType = GetItemInfo(info.itemID)
-                if name and itemType == "Consumable" then
-                    dbgConsumable = dbgConsumable + 1
-                    if foodTypes[itemSubType] then
-                        dbgMatched = dbgMatched + 1
-                        if byName[name] then
-                            byName[name].count = byName[name].count + (info.stackCount or 1)
-                        else
-                            byName[name] = { name = name, itemLevel = itemLevel or 0, count = info.stackCount or 1, icon = info.iconFileID, itemID = info.itemID }
-                        end
+            if info and info.itemID and db:IsPetFood(info.itemID, foodTypes) then
+                local name, _, itemLevel = GetItemInfo(info.itemID)
+                if name then
+                    if byName[name] then
+                        byName[name].count = byName[name].count + (info.stackCount or 1)
                     else
-                        print("  skip: " .. name .. " subtype='" .. tostring(itemSubType) .. "'")
+                        byName[name] = { name = name, itemLevel = itemLevel or 0, count = info.stackCount or 1, icon = info.iconFileID, itemID = info.itemID }
                     end
-                elseif name then
-                    -- non-consumable item, skip silently
-                elseif info.itemID then
-                    print("  uncached itemID=" .. info.itemID)
                 end
             end
         end
     end
-    print("Quiver Food: scanned " .. dbgTotal .. " items, " .. dbgConsumable .. " consumable, " .. dbgMatched .. " matched")
 
     local sorted = {}
     for _, food in pairs(byName) do sorted[#sorted+1] = food end
@@ -96,10 +80,6 @@ function Pet:GetSuitableFood()
 
     local result = {}
     for i = 1, math.min(5, #sorted) do result[i] = sorted[i] end
-    print("Quiver Food: found " .. #result .. " food item(s)")
-    for i, f in ipairs(result) do
-        print("  [" .. i .. "] " .. f.name .. " (ilvl " .. f.itemLevel .. ") x" .. f.count)
-    end
     return result
 end
 

@@ -25,6 +25,9 @@ Locales\enUS.lua
 # Core
 Core\Core.lua
 
+# Data
+Data\PetFoods.lua
+
 # Modules
 Modules\Ammo.lua
 Modules\Mana.lua
