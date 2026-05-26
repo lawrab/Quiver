@@ -128,7 +128,7 @@ function Sphere:SetupMenuButtons(f)
         { name = "pet",      angle = 30,  spell = "Call Pet" },
         { name = "traps",    angle = 210, spell = "Frost Trap" },
         { name = "tracking", angle = 150, spell = "Track Beasts" },
-        { name = "food",     angle = 300, spell = "Feed Pet" },
+        { name = "food",     angle = 330, spell = "Feed Pet" },
     }
 
     local BTN_SIZE = 26
