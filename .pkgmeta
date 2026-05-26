@@ -1,0 +1,9 @@
+package-as: Quiver
+
+ignore:
+  - CLAUDE.md
+  - README.md
+  - install.sh
+  - Quiver-logo.png
+  - .github
+  - .pkgmeta
