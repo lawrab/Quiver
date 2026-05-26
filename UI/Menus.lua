@@ -321,9 +321,6 @@ local function PopulateMenu(menu)
         UpdateTriggerReadiness(menu)
     end
 
-    if menu.triggerName == "QuiverBtn_pet" then
-        Menus:RebuildFoodPicker()
-    end
 end
 
 function Menus:GetKnownSpells()
@@ -383,6 +380,7 @@ function Menus:RebuildAll()
     for _, menu in pairs(self.menus) do
         PopulateMenu(menu)
     end
+    self:RebuildFoodPicker()
 end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
@@ -496,16 +494,15 @@ function Menus:RefreshFoodPicker()
 end
 
 function Menus:RebuildFoodPicker()
-    local petMenu = self.menus and self.menus.pet
-    if not petMenu or #foodPickerButtons == 0 then return end
-    local feedBtn = nil
-    for _, b in ipairs(petMenu.buttons) do
-        if b.isFeedButton then feedBtn = b; break end
+    if #foodPickerButtons == 0 then return end
+    local anchor = _G["QuiverBtn_food"]
+    if not anchor then
+        Quiver:Print("Quiver: QuiverBtn_food not found, food picker cannot be positioned")
+        return
     end
-    if not feedBtn then return end
     for i, b in ipairs(foodPickerButtons) do
         b:ClearAllPoints()
-        b:SetPoint("BOTTOM", feedBtn, "TOP", 0, 6 + (i - 1) * BUTTON_SPACING)
+        b:SetPoint("RIGHT", anchor, "LEFT", -6 - (i - 1) * BUTTON_SPACING, 0)
     end
     self:RefreshFoodPicker()
 end
@@ -551,7 +548,6 @@ function Menus:Initialize()
             { spell = "Revive Pet",     label = "Revive"  },
             { spell = "Mend Pet",       label = "Mend"    },
             { spell = "Beast Training", label = "Train"   },
-            { spell = "Feed Pet",       label = "Feed",   action = "feed" },
         }),
 
         traps = NewMenu("QuiverBtn_traps", true, (function()

@@ -128,6 +128,7 @@ function Sphere:SetupMenuButtons(f)
         { name = "pet",      angle = 30,  spell = "Call Pet" },
         { name = "traps",    angle = 210, spell = "Frost Trap" },
         { name = "tracking", angle = 150, spell = "Track Beasts" },
+        { name = "food",     angle = 300, spell = "Feed Pet" },
     }
 
     local BTN_SIZE = 26
@@ -166,20 +167,40 @@ function Sphere:SetupMenuButtons(f)
         end
 
         local menuName = btn.name
-        b:SetScript("PostClick", function(_, button)
-            if button == "LeftButton" then
-                Quiver.UI.Menus:Toggle(menuName)
-            elseif button == "RightButton" then
-                Quiver.UI.Menus:HideAll()
-            end
-        end)
-        b:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(btn.name:sub(1,1):upper()..btn.name:sub(2))
-            GameTooltip:AddLine("Left-click: open menu", 0.6, 0.6, 0.6)
-            GameTooltip:AddLine("Right-click: cast selected", 0.6, 0.6, 0.6)
-            GameTooltip:Show()
-        end)
+        if btn.name == "food" then
+            b:SetScript("PostClick", function(_, button)
+                if button == "LeftButton" then
+                    Quiver.UI.Menus:ToggleFoodPicker()
+                elseif button == "RightButton" then
+                    Quiver.UI.Menus:HideAll()
+                end
+            end)
+            b:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:AddLine("Feed Pet")
+                local happiness = Quiver.Modules.Pet.happiness
+                if happiness == 3 then
+                    GameTooltip:AddLine("Pet is already happy!", 0.2, 1.0, 0.2)
+                end
+                GameTooltip:AddLine("Left-click: open food picker", 0.6, 0.6, 0.6)
+                GameTooltip:Show()
+            end)
+        else
+            b:SetScript("PostClick", function(_, button)
+                if button == "LeftButton" then
+                    Quiver.UI.Menus:Toggle(menuName)
+                elseif button == "RightButton" then
+                    Quiver.UI.Menus:HideAll()
+                end
+            end)
+            b:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:AddLine(btn.name:sub(1,1):upper()..btn.name:sub(2))
+                GameTooltip:AddLine("Left-click: open menu", 0.6, 0.6, 0.6)
+                GameTooltip:AddLine("Right-click: cast selected", 0.6, 0.6, 0.6)
+                GameTooltip:Show()
+            end)
+        end
         b:SetScript("OnLeave", function()
             GameTooltip:Hide()
         end)
