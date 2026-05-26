@@ -11,6 +11,8 @@ Quiver.UI.Menus = Menus
 local BUTTON_SIZE = 28
 local BUTTON_SPACING = 34
 local activeMenu = nil
+local foodPickerOpen = false
+local foodPickerButtons = {}
 
 -- Deferred attribute application: SetAttribute on secure frames from PostClick
 -- (after a secure action fired) can be silently blocked in TBC Classic.
@@ -98,6 +100,33 @@ local function MakeActionButton(label, icon, spellCast)
     return b
 end
 
+local function MakeFoodButton()
+    local b = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
+    b:SetWidth(BUTTON_SIZE)
+    b:SetHeight(BUTTON_SIZE)
+    b:SetFrameStrata("DIALOG")
+    b:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2")
+    b:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress")
+    b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
+    local keydown = GetCVarBool("ActionButtonUseKeyDown")
+    b:RegisterForClicks(keydown and "AnyDown" or "AnyUp")
+    local countText = b:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+    countText:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 2, 2)
+    countText:SetTextColor(1, 1, 1)
+    b.countText = countText
+    b:SetScript("OnEnter", function(self)
+        if self.itemID then
+            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+            GameTooltip:SetHyperlink("item:" .. self.itemID)
+            GameTooltip:Show()
+        end
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    b:SetAlpha(0)
+    b:Show()
+    return b
+end
+
 -- ── Menu rebuild ──────────────────────────────────────────────────────────────
 
 local function UpdateTriggerReadiness(menu)
@@ -170,11 +199,31 @@ local function PopulateMenu(menu)
                 b.cdText = cdText
             end
             local capturedEntry = entry
-            b:SetScript("PostClick", function(_, button)
-                if button == "LeftButton" then
-                    Menus:SelectEntry(menu, capturedEntry)
-                end
-            end)
+            if entry.action == "feed" then
+                b.isFeedButton = true
+                b:SetScript("PostClick", function(_, button)
+                    if button == "LeftButton" then
+                        Menus:ToggleFoodPicker()
+                    end
+                end)
+                b:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                    GameTooltip:AddLine("Feed Pet")
+                    if Quiver.Modules.Pet.happiness == 3 then
+                        GameTooltip:AddLine("Pet is already happy!", 0.2, 1.0, 0.2)
+                    end
+                    GameTooltip:AddLine("Left-click: open food picker", 0.6, 0.6, 0.6)
+                    GameTooltip:AddLine("Right-click: cast Feed Pet", 0.6, 0.6, 0.6)
+                    GameTooltip:Show()
+                end)
+                b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            else
+                b:SetScript("PostClick", function(_, button)
+                    if button == "LeftButton" then
+                        Menus:SelectEntry(menu, capturedEntry)
+                    end
+                end)
+            end
             table.insert(menu.buttons, b)
         end
     end
@@ -271,6 +320,10 @@ local function PopulateMenu(menu)
         end)
         UpdateTriggerReadiness(menu)
     end
+
+    if menu.triggerName == "QuiverBtn_pet" then
+        Menus:RebuildFoodPicker()
+    end
 end
 
 function Menus:GetKnownSpells()
@@ -359,6 +412,7 @@ function Menus:HideAll()
             b:SetAlpha(0)
         end
     end
+    self:HideFoodPicker()
     activeMenu = nil
 end
 
@@ -410,6 +464,65 @@ function Menus:UpdateTrapCooldowns()
     end
 end
 
+function Menus:HideFoodPicker()
+    for _, b in ipairs(foodPickerButtons) do b:SetAlpha(0) end
+    foodPickerOpen = false
+end
+
+function Menus:RefreshFoodPicker()
+    local foods = Quiver.Modules.Pet:GetSuitableFood()
+    for i, b in ipairs(foodPickerButtons) do
+        local food = foods[i]
+        if food then
+            b:SetNormalTexture(food.icon or "Interface\\Buttons\\UI-Quickslot2")
+            b.countText:SetText(food.count > 1 and tostring(food.count) or "")
+            b.itemID = food.itemID
+            b.itemName = food.name
+            if not InCombatLockdown() then
+                b:SetAttribute("type", "macro")
+                b:SetAttribute("macrotext", "/cast Feed Pet\n/use " .. food.name)
+            end
+        else
+            b:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2")
+            b.countText:SetText("")
+            b.itemID = nil
+            b.itemName = nil
+            if not InCombatLockdown() then
+                b:SetAttribute("type", nil)
+                b:SetAttribute("macrotext", nil)
+            end
+        end
+    end
+end
+
+function Menus:RebuildFoodPicker()
+    local petMenu = self.menus and self.menus.pet
+    if not petMenu or #foodPickerButtons == 0 then return end
+    local feedBtn = nil
+    for _, b in ipairs(petMenu.buttons) do
+        if b.isFeedButton then feedBtn = b; break end
+    end
+    if not feedBtn then return end
+    for i, b in ipairs(foodPickerButtons) do
+        b:ClearAllPoints()
+        b:SetPoint("BOTTOM", feedBtn, "TOP", 0, 6 + (i - 1) * BUTTON_SPACING)
+    end
+    self:RefreshFoodPicker()
+end
+
+function Menus:ToggleFoodPicker()
+    if foodPickerOpen then
+        self:HideFoodPicker()
+    else
+        self:RefreshFoodPicker()
+        local foods = Quiver.Modules.Pet:GetSuitableFood()
+        for i, b in ipairs(foodPickerButtons) do
+            b:SetAlpha(foods[i] and 1 or 0)
+        end
+        foodPickerOpen = true
+    end
+end
+
 -- ── Menu definitions ──────────────────────────────────────────────────────────
 
 local function NewMenu(btnName, growLeft, entries)
@@ -438,6 +551,7 @@ function Menus:Initialize()
             { spell = "Revive Pet",     label = "Revive"  },
             { spell = "Mend Pet",       label = "Mend"    },
             { spell = "Beast Training", label = "Train"   },
+            { spell = "Feed Pet",       label = "Feed",   action = "feed" },
         }),
 
         traps = NewMenu("QuiverBtn_traps", true, (function()
@@ -457,11 +571,14 @@ function Menus:Initialize()
         end)()),
     }
 
+    for i = 1, 5 do foodPickerButtons[i] = MakeFoodButton() end
+
     self:RebuildAll()
 
     Quiver:RegisterEvent("SPELLS_CHANGED", function() Menus:RebuildAll() end)
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() Menus:RebuildAll() end)
     Quiver:RegisterEvent("PLAYER_REGEN_ENABLED", function() Menus:RebuildAll() end)
+    Quiver:RegisterEvent("BAG_UPDATE", function() Menus:RefreshFoodPicker() end)
 
     -- Live countdown while the trap menu is open
     local cdTicker = CreateFrame("Frame")

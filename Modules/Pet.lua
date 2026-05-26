@@ -47,6 +47,42 @@ function Pet:GetHappinessColor()
     return 0.5, 0.5, 0.5
 end
 
+function Pet:GetSuitableFood()
+    if not self.exists then return {} end
+
+    local foodTypes = {}
+    for _, ft in ipairs({GetPetFoodTypes()}) do
+        foodTypes[ft] = true
+    end
+    if not next(foodTypes) then return {} end
+
+    local byName = {}
+    for bag = 0, 4 do
+        for slot = 1, GetContainerNumSlots(bag) do
+            local itemID = GetContainerItemID(bag, slot)
+            if itemID then
+                local name, _, itemLevel, _, _, itemType, itemSubType = GetItemInfo(itemID)
+                if name and itemType == "Consumable" and foodTypes[itemSubType] then
+                    local texture, count = GetContainerItemInfo(bag, slot)
+                    if byName[name] then
+                        byName[name].count = byName[name].count + (count or 1)
+                    else
+                        byName[name] = { name = name, itemLevel = itemLevel or 0, count = count or 1, icon = texture, itemID = itemID }
+                    end
+                end
+            end
+        end
+    end
+
+    local sorted = {}
+    for _, food in pairs(byName) do sorted[#sorted+1] = food end
+    table.sort(sorted, function(a, b) return a.itemLevel > b.itemLevel end)
+
+    local result = {}
+    for i = 1, math.min(5, #sorted) do result[i] = sorted[i] end
+    return result
+end
+
 function Pet:CallPet()   CastSpellByName("Call Pet")    end
 function Pet:DismissPet() CastSpellByName("Dismiss Pet") end
 function Pet:RevivePet() CastSpellByName("Revive Pet")  end
