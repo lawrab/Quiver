@@ -157,8 +157,9 @@ function Sphere:SetupMenuButtons(f)
             cdDim:Hide()
             b.cdDim = cdDim
             local cdText = b:CreateFontString(nil, "OVERLAY")
-            cdText:SetFont(select(1, NumberFontNormal:GetFont()), 10, "OUTLINE")
+            cdText:SetFont(select(1, NumberFontNormal:GetFont()), 11, "OUTLINE")
             cdText:SetPoint("CENTER", b, "CENTER", 0, 0)
+            cdText:SetJustifyH("CENTER")
             cdText:SetTextColor(1, 1, 1)
             cdText:Hide()
             b.cdText = cdText

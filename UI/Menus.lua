@@ -162,6 +162,7 @@ local function PopulateMenu(menu)
                 local cdText = b:CreateFontString(nil, "OVERLAY")
                 cdText:SetFont(select(1, NumberFontNormal:GetFont()), 10, "OUTLINE")
                 cdText:SetPoint("CENTER", b, "CENTER", 0, 0)
+                cdText:SetJustifyH("CENTER")
                 cdText:SetTextColor(1, 1, 1)
                 cdText:Hide()
                 b.cdText = cdText
@@ -375,6 +376,8 @@ function Menus:UpdateTrapCooldowns()
                     b.cdText:SetText(remaining >= 10 and math.floor(remaining) or string.format("%.1f", remaining))
                     b.cdText:Show()
                 end
+                local tex = b:GetNormalTexture()
+                if tex then tex:SetDesaturated(true) end
                 if remaining > maxRemaining then
                     maxRemaining, maxStart, maxDuration = remaining, start, duration
                 end
@@ -382,6 +385,8 @@ function Menus:UpdateTrapCooldowns()
                 if b.cdFrame then b.cdFrame:SetCooldown(0, 0) end
                 if b.cdDim  then b.cdDim:Hide() end
                 if b.cdText then b.cdText:Hide() end
+                local tex = b:GetNormalTexture()
+                if tex then tex:SetDesaturated(false) end
             end
         end
     end
@@ -389,13 +394,16 @@ function Menus:UpdateTrapCooldowns()
     -- Mirror the cooldown onto the trigger button
     local triggerBtn = _G["QuiverBtn_traps"]
     if triggerBtn and triggerBtn.cdDim then
+        local triggerTex = triggerBtn:GetNormalTexture()
         if maxRemaining > 0 then
             triggerBtn.cdDim:Show()
             triggerBtn.cdText:SetText(maxRemaining >= 10 and math.floor(maxRemaining) or string.format("%.1f", maxRemaining))
             triggerBtn.cdText:Show()
+            if triggerTex then triggerTex:SetDesaturated(true) end
         else
             triggerBtn.cdDim:Hide()
             triggerBtn.cdText:Hide()
+            if triggerTex then triggerTex:SetDesaturated(false) end
         end
     end
 end
