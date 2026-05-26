@@ -61,21 +61,34 @@ function Pet:GetSuitableFood()
     if not next(foodTypes) then return {} end
 
     local byName = {}
+    local dbgTotal, dbgConsumable, dbgMatched = 0, 0, 0
     for bag = 0, 4 do
         for slot = 1, C_Container.GetContainerNumSlots(bag) do
             local info = C_Container.GetContainerItemInfo(bag, slot)
             if info and info.itemID then
+                dbgTotal = dbgTotal + 1
                 local name, _, itemLevel, _, _, itemType, itemSubType = GetItemInfo(info.itemID)
-                if name and itemType == "Consumable" and foodTypes[itemSubType] then
-                    if byName[name] then
-                        byName[name].count = byName[name].count + (info.stackCount or 1)
+                if name and itemType == "Consumable" then
+                    dbgConsumable = dbgConsumable + 1
+                    if foodTypes[itemSubType] then
+                        dbgMatched = dbgMatched + 1
+                        if byName[name] then
+                            byName[name].count = byName[name].count + (info.stackCount or 1)
+                        else
+                            byName[name] = { name = name, itemLevel = itemLevel or 0, count = info.stackCount or 1, icon = info.iconFileID, itemID = info.itemID }
+                        end
                     else
-                        byName[name] = { name = name, itemLevel = itemLevel or 0, count = info.stackCount or 1, icon = info.iconFileID, itemID = info.itemID }
+                        print("  skip: " .. name .. " subtype='" .. tostring(itemSubType) .. "'")
                     end
+                elseif name then
+                    -- non-consumable item, skip silently
+                elseif info.itemID then
+                    print("  uncached itemID=" .. info.itemID)
                 end
             end
         end
     end
+    print("Quiver Food: scanned " .. dbgTotal .. " items, " .. dbgConsumable .. " consumable, " .. dbgMatched .. " matched")
 
     local sorted = {}
     for _, food in pairs(byName) do sorted[#sorted+1] = food end
