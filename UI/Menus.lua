@@ -123,6 +123,7 @@ local function MakeFoodButton()
     end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
     b:SetAlpha(0)
+    b:EnableMouse(false)
     b:Show()
     return b
 end
@@ -463,7 +464,10 @@ function Menus:UpdateTrapCooldowns()
 end
 
 function Menus:HideFoodPicker()
-    for _, b in ipairs(foodPickerButtons) do b:SetAlpha(0) end
+    for _, b in ipairs(foodPickerButtons) do
+        b:SetAlpha(0)
+        b:EnableMouse(false)
+    end
     foodPickerOpen = false
 end
 
@@ -514,7 +518,9 @@ function Menus:ToggleFoodPicker()
         self:RefreshFoodPicker()
         local foods = Quiver.Modules.Pet:GetSuitableFood()
         for i, b in ipairs(foodPickerButtons) do
-            b:SetAlpha(foods[i] and 1 or 0)
+            local hasFood = foods[i] ~= nil
+            b:SetAlpha(hasFood and 1 or 0)
+            b:EnableMouse(hasFood)
         end
         foodPickerOpen = true
     end
