@@ -160,7 +160,7 @@ local function PopulateMenu(menu)
                 cdDim:Hide()
                 b.cdDim = cdDim
                 local cdText = b:CreateFontString(nil, "OVERLAY")
-                cdText:SetFont(NumberFontNormal:GetFont(), 10)
+                cdText:SetFont(select(1, NumberFontNormal:GetFont()), 10, "OUTLINE")
                 cdText:SetPoint("CENTER", b, "CENTER", 0, 0)
                 cdText:SetTextColor(1, 1, 1)
                 cdText:Hide()
