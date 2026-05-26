@@ -150,6 +150,8 @@ local function PopulateMenu(menu)
             if entry.showCooldown and entry.spell then
                 local cd = CreateFrame("Cooldown", nil, b)
                 cd:SetAllPoints(b)
+                cd.noOCC = true
+                cd.noCooldownCount = true
                 b.cdFrame = cd
                 b.cdSpell = entry.spell
                 -- Dark tint over the icon — definitely visible even if Cooldown
