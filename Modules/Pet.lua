@@ -58,16 +58,15 @@ function Pet:GetSuitableFood()
 
     local byName = {}
     for bag = 0, 4 do
-        for slot = 1, GetContainerNumSlots(bag) do
-            local itemID = GetContainerItemID(bag, slot)
-            if itemID then
-                local name, _, itemLevel, _, _, itemType, itemSubType = GetItemInfo(itemID)
+        for slot = 1, C_Container.GetContainerNumSlots(bag) do
+            local info = C_Container.GetContainerItemInfo(bag, slot)
+            if info and info.itemID then
+                local name, _, itemLevel, _, _, itemType, itemSubType = GetItemInfo(info.itemID)
                 if name and itemType == "Consumable" and foodTypes[itemSubType] then
-                    local texture, count = GetContainerItemInfo(bag, slot)
                     if byName[name] then
-                        byName[name].count = byName[name].count + (count or 1)
+                        byName[name].count = byName[name].count + (info.stackCount or 1)
                     else
-                        byName[name] = { name = name, itemLevel = itemLevel or 0, count = count or 1, icon = texture, itemID = itemID }
+                        byName[name] = { name = name, itemLevel = itemLevel or 0, count = info.stackCount or 1, icon = info.iconFileID, itemID = info.itemID }
                     end
                 end
             end
