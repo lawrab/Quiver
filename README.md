@@ -1,0 +1,43 @@
+# Quiver
+
+A hunter class addon for **WoW TBC Classic Anniversary** (Interface 20504), modeled after the Necrosis warlock addon. The idea is a single draggable orb on screen that gives you one-click access to every hunter mechanic — aspects, traps, stings, pet management, and tracking — without cluttering your bars.
+
+## How it works
+
+A circular **sphere** sits on screen as your central hub. Four small buttons orbit it, one per mechanic category. Left-clicking a button opens that category's radial menu; right-clicking fires a quick-cast of your last selected spell from that menu. The sphere itself can be left- and right-click bound to any spell (Hunter's Mark, Feign Death, etc.) via the settings panel (Alt+Right-click the sphere).
+
+### The sphere
+
+- **Color** reflects your active Aspect — green for Hawk, blue for Viper, yellow for Cheetah, and so on. No aspect = maroon pulse. Low mana without Viper active = blue pulse.
+- **Ammo count** sits in the center. Turns red when you're running low.
+- **Pet happiness** shows as a colored ring around the sphere edge (green/yellow/red).
+- **Sting duration** bar runs along the bottom edge, tracking your active sting on the current target.
+
+### The menus
+
+Each of the four orbit buttons opens a row of spell icons:
+
+| Button | Spells |
+|---|---|
+| **Aspects** | Hawk, Viper, Cheetah, Pack, Wild, Monkey, Dragonhawk — only shows aspects you've learned |
+| **Pet** | Call, Dismiss, Revive, Mend, Beast Training |
+| **Traps** | Frost, Freezing, Immolation, Explosive, Snake — with live cooldown countdown |
+| **Tracking** | Beasts, Humanoids, Demons, Undead, Giants, Elementals, Hidden |
+
+Left-clicking a spell in the menu **selects** it as your quick-cast for that button. Right-clicking casts it immediately. The orbit button's icon updates to show your current selection. If the selected spell is on cooldown, a dark overlay and live countdown (e.g. `9.3`) appear on the button.
+
+Menus only show spells you've actually learned — if you haven't trained a spell yet, it doesn't appear.
+
+### Trap cooldowns
+
+All traps share one cooldown timer in TBC. The countdown shows on both the individual trap icons in the open menu and on the traps orbit button itself, so you know at a glance whether you can drop a trap without opening the menu.
+
+## Installation
+
+Drop the `Quiver` folder into your `Interface/AddOns/` directory and reload. The sphere appears in the center of screen on first load; drag it with Middle-click to reposition.
+
+## Tech
+
+- **Lua**, WoW API, Interface version `20504`
+- [Ace3](https://www.wowace.com/projects/ace3) — AceAddon, AceEvent, AceDB, AceGUI
+- Settings saved to `QuiverDB` (account-wide)

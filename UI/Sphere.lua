@@ -150,6 +150,19 @@ function Sphere:SetupMenuButtons(f)
         b:SetPushedTexture(icon or "Interface\\Buttons\\UI-Quickslot-Depress")
         b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
 
+        if btn.name == "traps" then
+            local cdDim = b:CreateTexture(nil, "OVERLAY")
+            cdDim:SetAllPoints(b)
+            cdDim:SetTexture(0, 0, 0, 0.65)
+            cdDim:Hide()
+            b.cdDim = cdDim
+            local cdText = b:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+            cdText:SetPoint("CENTER", b, "CENTER", 0, 0)
+            cdText:SetTextColor(1, 1, 1)
+            cdText:Hide()
+            b.cdText = cdText
+        end
+
         local menuName = btn.name
         b:SetScript("PostClick", function(_, button)
             if button == "LeftButton" then

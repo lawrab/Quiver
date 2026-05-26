@@ -159,7 +159,7 @@ local function PopulateMenu(menu)
                 cdDim:SetTexture(0, 0, 0, 0.65)
                 cdDim:Hide()
                 b.cdDim = cdDim
-                local cdText = b:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+                local cdText = b:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
                 cdText:SetPoint("CENTER", b, "CENTER", 0, 0)
                 cdText:SetTextColor(1, 1, 1)
                 cdText:Hide()
@@ -343,6 +343,8 @@ end
 function Menus:UpdateTrapCooldowns()
     local trapMenu = self.menus and self.menus.traps
     if not trapMenu then return end
+
+    local maxRemaining, maxStart, maxDuration = 0, 0, 0
     for _, b in ipairs(trapMenu.buttons) do
         if b.cdSpell then
             local start, duration = GetSpellCooldown(b.cdSpell)
@@ -354,11 +356,27 @@ function Menus:UpdateTrapCooldowns()
                     b.cdText:SetText(remaining >= 10 and math.floor(remaining) or string.format("%.1f", remaining))
                     b.cdText:Show()
                 end
+                if remaining > maxRemaining then
+                    maxRemaining, maxStart, maxDuration = remaining, start, duration
+                end
             else
                 if b.cdFrame then b.cdFrame:SetCooldown(0, 0) end
                 if b.cdDim  then b.cdDim:Hide() end
                 if b.cdText then b.cdText:Hide() end
             end
+        end
+    end
+
+    -- Mirror the cooldown onto the trigger button
+    local triggerBtn = _G["QuiverBtn_traps"]
+    if triggerBtn and triggerBtn.cdDim then
+        if maxRemaining > 0 then
+            triggerBtn.cdDim:Show()
+            triggerBtn.cdText:SetText(maxRemaining >= 10 and math.floor(maxRemaining) or string.format("%.1f", maxRemaining))
+            triggerBtn.cdText:Show()
+        else
+            triggerBtn.cdDim:Hide()
+            triggerBtn.cdText:Hide()
         end
     end
 end
@@ -421,7 +439,7 @@ function Menus:Initialize()
     local elapsed = 0
     cdTicker:SetScript("OnUpdate", function(_, dt)
         elapsed = elapsed + dt
-        if elapsed >= 0.1 and activeMenu == "traps" then
+        if elapsed >= 0.1 then
             elapsed = 0
             Menus:UpdateTrapCooldowns()
         end
