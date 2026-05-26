@@ -126,9 +126,20 @@ add("Fungus", {
     27676,
 })
 
+-- ── Pet-buff treats (TBC) ─────────────────────────────────────────────────────
+-- These items are right-clicked directly from the bag — no Feed Pet needed.
+-- They buff the pet's stats and should always appear first in the food picker,
+-- regardless of the pet's diet type.
+
+local petBuffIDs = {
+    [33874] = true,  -- Kibler's Bits: +20 Str/Stamina to pet for 1 hour
+    [27656] = true,  -- Sporeling Snack: +20 Stamina/Spirit to pet for 30 min
+}
+
 -- ── Public API ────────────────────────────────────────────────────────────────
 
-PetFoods.lookup = lookup
+PetFoods.lookup    = lookup
+PetFoods.petBuffIDs = petBuffIDs
 
 -- Returns true if itemID is valid pet food matching the given diet set.
 -- petFoodTypes: { [dietName] = true } from GetPetFoodTypes(), or nil to skip diet check.

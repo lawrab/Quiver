@@ -34,6 +34,7 @@ function Pet:UpdateState()
         self.happiness = nil
     end
     Quiver.UI.Sphere:UpdatePetIndicator()
+    Quiver.UI.Menus:RebuildFoodPicker()
 
     if self.happiness == 1 and Quiver.db.profile.sounds.ammoLow then
         -- PlaySoundFile("Interface\\AddOns\\Quiver\\Media\\Sounds\\pet_unhappy.ogg")
@@ -57,17 +58,28 @@ function Pet:GetSuitableFood()
     if not next(foodTypes) then return {} end
 
     local db = Quiver.Data.PetFoods
+    local petBuffIDs = db.petBuffIDs or {}
     local byName = {}
     for bag = 0, 4 do
         for slot = 1, C_Container.GetContainerNumSlots(bag) do
             local info = C_Container.GetContainerItemInfo(bag, slot)
-            if info and info.itemID and db:IsPetFood(info.itemID, foodTypes) then
-                local name, _, itemLevel = GetItemInfo(info.itemID)
-                if name then
-                    if byName[name] then
-                        byName[name].count = byName[name].count + (info.stackCount or 1)
-                    else
-                        byName[name] = { name = name, itemLevel = itemLevel or 0, count = info.stackCount or 1, icon = info.iconFileID, itemID = info.itemID }
+            if info and info.itemID then
+                local isPetBuff = petBuffIDs[info.itemID] == true
+                if isPetBuff or db:IsPetFood(info.itemID, foodTypes) then
+                    local name, _, itemLevel = GetItemInfo(info.itemID)
+                    if name then
+                        if byName[name] then
+                            byName[name].count = byName[name].count + (info.stackCount or 1)
+                        else
+                            byName[name] = {
+                                name      = name,
+                                itemLevel = itemLevel or 0,
+                                count     = info.stackCount or 1,
+                                icon      = info.iconFileID,
+                                itemID    = info.itemID,
+                                isPetBuff = isPetBuff,
+                            }
+                        end
                     end
                 end
             end
@@ -76,7 +88,13 @@ function Pet:GetSuitableFood()
 
     local sorted = {}
     for _, food in pairs(byName) do sorted[#sorted+1] = food end
-    table.sort(sorted, function(a, b) return a.itemLevel > b.itemLevel end)
+    -- Pet-buff treats first (direct-use items that buff pet stats), then by item level
+    table.sort(sorted, function(a, b)
+        local ap = (a.isPetBuff and 0 or 1)
+        local bp = (b.isPetBuff and 0 or 1)
+        if ap ~= bp then return ap < bp end
+        return a.itemLevel > b.itemLevel
+    end)
 
     local result = {}
     for i = 1, math.min(5, #sorted) do result[i] = sorted[i] end
