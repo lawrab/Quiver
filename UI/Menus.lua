@@ -14,13 +14,16 @@ local activeMenu = nil
 local foodPickerOpen = false
 local foodPickerButtons = {}
 
--- Trap cooldown ticker — only runs while the trap menu is open
+-- Trap cooldown ticker.
+-- When the trap menu is open: 0.1 s for smooth expansion-button text.
+-- When menu is closed but a trap is cooling: 0.5 s for the trigger button only.
 local cdTickerElapsed = 0
 local cdTicker = CreateFrame("Frame")
 cdTicker:Hide()
 cdTicker:SetScript("OnUpdate", function(_, dt)
     cdTickerElapsed = cdTickerElapsed + dt
-    if cdTickerElapsed >= 0.1 then
+    local interval = (activeMenu == "traps") and 0.1 or 0.5
+    if cdTickerElapsed >= interval then
         cdTickerElapsed = 0
         Quiver.UI.Menus:UpdateTrapCooldowns()
     end
@@ -197,9 +200,11 @@ local function PopulateMenu(menu)
                 icon = spellIcon
             end
 
-            -- Update icon textures
+            -- Update icon textures; cache the normal texture object so
+            -- UpdateTrapCooldowns never has to call GetNormalTexture() in a hot path.
             b:SetNormalTexture(icon or "Interface\\Buttons\\UI-Quickslot2")
             b:SetPushedTexture(icon or "Interface\\Buttons\\UI-Quickslot-Depress")
+            b._normalTex = b:GetNormalTexture()
 
             -- Update secure right-click macro
             if castTarget then
@@ -514,17 +519,17 @@ function Menus:UpdateTrapCooldowns()
                     if b.cdFrame then b.cdFrame:SetCooldown(start, duration) end
                     if b.cdDim  then b.cdDim:Show() end
                     if b.cdText then
-                        b.cdText:SetText(remaining >= 10 and math.floor(remaining) or string.format("%.1f", remaining))
+                        -- Show tenths only for the last second; integer otherwise.
+                        -- string.format is only called for sub-1s, minimising string churn.
+                        b.cdText:SetText(remaining >= 1 and math.ceil(remaining) or string.format("%.1f", remaining))
                         b.cdText:Show()
                     end
-                    local tex = b:GetNormalTexture()
-                    if tex then tex:SetDesaturated(true) end
+                    if b._normalTex then b._normalTex:SetDesaturated(true) end
                 else
                     if b.cdFrame then b.cdFrame:SetCooldown(0, 0) end
                     if b.cdDim  then b.cdDim:Hide() end
                     if b.cdText then b.cdText:Hide() end
-                    local tex = b:GetNormalTexture()
-                    if tex then tex:SetDesaturated(false) end
+                    if b._normalTex then b._normalTex:SetDesaturated(false) end
                 end
             end
         end
@@ -533,10 +538,15 @@ function Menus:UpdateTrapCooldowns()
     -- Mirror the aggregate cooldown onto the trigger button (always updated)
     local triggerBtn = _G["QuiverBtn_traps"]
     if triggerBtn and triggerBtn.cdDim and triggerBtn.cdText then
-        local triggerTex = triggerBtn:GetNormalTexture()
+        -- Cache once; GetNormalTexture() may allocate a new userdata each call
+        -- on some WoW client builds, so we avoid calling it every tick.
+        if not triggerBtn._normalTex then
+            triggerBtn._normalTex = triggerBtn:GetNormalTexture()
+        end
+        local triggerTex = triggerBtn._normalTex
         if maxRemaining > 0 then
             triggerBtn.cdDim:Show()
-            triggerBtn.cdText:SetText(maxRemaining >= 10 and math.floor(maxRemaining) or string.format("%.1f", maxRemaining))
+            triggerBtn.cdText:SetText(maxRemaining >= 1 and math.ceil(maxRemaining) or string.format("%.1f", maxRemaining))
             triggerBtn.cdText:Show()
             if triggerTex then triggerTex:SetDesaturated(true) end
         else
