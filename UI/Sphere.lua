@@ -88,12 +88,15 @@ function Sphere:Initialize()
             Quiver.UI.Config:Toggle()
             return
         end
-        local lc = Quiver.db.profile.sphere.leftClick
-        local rc = Quiver.db.profile.sphere.rightClick
-        if button == "LeftButton" and lc == "none" then
-            UIErrorsFrame:AddMessage("Quiver: No left-click spell set  \226\128\148  Alt+Right-click to configure", 1, 0.82, 0)
-        elseif button == "RightButton" and rc == "none" then
-            UIErrorsFrame:AddMessage("Quiver: No right-click spell set  \226\128\148  Alt+Right-click to configure", 1, 0.82, 0)
+        local sp = Quiver.db.profile.sphere
+        local function HasBinding(bType, spell, macro)
+            if bType == "spell" then return spell ~= "none" end
+            if bType == "macro" then return (macro or "") ~= "" end
+        end
+        if button == "LeftButton" and not HasBinding(sp.leftType or "spell", sp.leftClick, sp.leftMacro) then
+            UIErrorsFrame:AddMessage("Quiver: No left-click action set  \226\128\148  Alt+Right-click to configure", 1, 0.82, 0)
+        elseif button == "RightButton" and not HasBinding(sp.rightType or "spell", sp.rightClick, sp.rightMacro) then
+            UIErrorsFrame:AddMessage("Quiver: No right-click action set  \226\128\148  Alt+Right-click to configure", 1, 0.82, 0)
         end
     end)
 

@@ -69,7 +69,7 @@ function Pet:GetSuitableFood()
             if info and info.itemID then
                 local isPetBuff = petBuffIDs[info.itemID] == true
                 if isPetBuff or db:IsPetFood(info.itemID, foodTypes) then
-                    local name, _, itemLevel, _, _, _, _, _, _, itemIcon = GetItemInfo(info.itemID)
+                    local name, _, _, itemLevel, _, _, _, _, _, itemIcon = GetItemInfo(info.itemID)
                     if name then
                         if byName[name] then
                             byName[name].count = byName[name].count + (info.stackCount or 1)
@@ -96,12 +96,14 @@ function Pet:GetSuitableFood()
 
     local sorted = {}
     for _, food in pairs(byName) do sorted[#sorted+1] = food end
-    -- Pet-buff treats first (direct-use items that buff pet stats), then by item level
+    -- Pet-buff treats first (direct-use items that buff pet stats), then by item level desc,
+    -- then alphabetically as a stable tiebreaker so order never shuffles.
     table.sort(sorted, function(a, b)
         local ap = (a.isPetBuff and 0 or 1)
         local bp = (b.isPetBuff and 0 or 1)
         if ap ~= bp then return ap < bp end
-        return a.itemLevel > b.itemLevel
+        if a.itemLevel ~= b.itemLevel then return a.itemLevel > b.itemLevel end
+        return a.name < b.name
     end)
 
     local result = {}

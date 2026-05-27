@@ -38,7 +38,8 @@ local function RefreshSpellCache()
         local _, _, offset, count = GetSpellTabInfo(tab)
         for slot = offset + 1, offset + count do
             local spellType, spellID = GetSpellBookItemInfo(slot, BOOKTYPE_SPELL)
-            if spellType == "SPELL" then
+            local _, subtext = GetSpellInfo(spellID or GetSpellBookItemName(slot, BOOKTYPE_SPELL) or "")
+            if spellType == "SPELL" and subtext ~= "Passive" then
                 local name = GetSpellBookItemName(slot, BOOKTYPE_SPELL)
                 if name then
                     -- store ID when available; true otherwise (just marks as known)
@@ -676,7 +677,8 @@ function Menus:RebuildFoodPicker()
             GameTooltip:Show()
         end)
     else
-        SetFoodOrbitIcon(btn, nil)
+        local _, _, feedIcon = GetSpellInfo("Feed Pet")
+        SetFoodOrbitIcon(btn, feedIcon or nil)
         btn:SetAlpha(0.6)
         btn:SetAttribute("macrotext2", "")
         btn:SetScript("OnEnter", function(self)
