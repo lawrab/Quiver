@@ -14,15 +14,29 @@ local activeMenu = nil
 local foodPickerOpen = false
 local foodPickerButtons = {}
 
+-- Trap cooldown ticker — only runs while the trap menu is open
+local cdTickerElapsed = 0
+local cdTicker = CreateFrame("Frame")
+cdTicker:Hide()
+cdTicker:SetScript("OnUpdate", function(_, dt)
+    cdTickerElapsed = cdTickerElapsed + dt
+    if cdTickerElapsed >= 0.1 then
+        cdTickerElapsed = 0
+        Quiver.UI.Menus:UpdateTrapCooldowns()
+    end
+end)
+
 -- Deferred attribute application: SetAttribute on secure frames from PostClick
 -- (after a secure action fired) can be silently blocked in TBC Classic.
 -- We write the pending menu here and apply it on the very next OnUpdate frame.
 local pendingSelectionMenu = nil
 local selectionTicker = CreateFrame("Frame")
+selectionTicker:Hide()   -- only active while a deferred attribute write is pending
 selectionTicker:SetScript("OnUpdate", function()
     if pendingSelectionMenu and not InCombatLockdown() then
         local m = pendingSelectionMenu
         pendingSelectionMenu = nil
+        selectionTicker:Hide()
         Quiver.UI.Menus:ApplySelectionToTrigger(m)
     end
 end)
@@ -373,6 +387,7 @@ function Menus:SelectEntry(menu, entry)
 
     UpdateTriggerReadiness(menu)
     pendingSelectionMenu = menu
+    selectionTicker:Show()
     self:HideAll()
 end
 
@@ -402,6 +417,8 @@ function Menus:Toggle(menuName)
     end
     activeMenu = menuName
     if menuName == "traps" then
+        cdTickerElapsed = 0
+        cdTicker:Show()
         self:UpdateTrapCooldowns()
     end
 end
@@ -413,6 +430,7 @@ function Menus:HideAll()
         end
     end
     self:HideFoodPicker()
+    cdTicker:Hide()
     activeMenu = nil
 end
 
@@ -769,14 +787,4 @@ function Menus:Initialize()
         end
     end)
 
-    -- Live countdown while the trap menu is open
-    local cdTicker = CreateFrame("Frame")
-    local elapsed = 0
-    cdTicker:SetScript("OnUpdate", function(_, dt)
-        elapsed = elapsed + dt
-        if elapsed >= 0.1 then
-            elapsed = 0
-            Menus:UpdateTrapCooldowns()
-        end
-    end)
 end

@@ -10,6 +10,7 @@ local AMMO_SLOT = 0
 function Ammo:Initialize()
     self.count = 0
     self.itemName = nil
+    self.wasLow = false
 end
 
 function Ammo:Enable()
@@ -33,9 +34,13 @@ function Ammo:UpdateCount()
 
     Quiver.UI.Sphere:UpdateAmmoDisplay()
 
-    if self.count < Quiver.db.profile.ammoWarnThreshold then
+    -- Only fire once when crossing the threshold downward.
+    -- Ignore count == 0: that just means no ammo pouch is equipped.
+    local isLow = self.count > 0 and self.count < Quiver.db.profile.ammoWarnThreshold
+    if isLow and not self.wasLow then
         self:OnAmmoLow()
     end
+    self.wasLow = isLow
 end
 
 function Ammo:OnAmmoLow()
