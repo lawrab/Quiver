@@ -8,6 +8,10 @@ Quiver.UI.Sphere = Sphere
 local SPHERE_SIZE = 80
 local INDICATOR_SIZE = 12
 
+-- Pre-allocated pulse color constants — reused every frame, never re-created
+local PULSE_COLOR_MANA_LOW  = {0.3,  0.5,  1.0 }
+local PULSE_COLOR_NO_ASPECT = {0.75, 0.08, 0.12}
+
 function Sphere:Initialize()
     local f = CreateFrame("Button", "QuiverSphere", UIParent, "SecureActionButtonTemplate")
     f:SetWidth(SPHERE_SIZE)
@@ -299,10 +303,10 @@ function Sphere:UpdateColor()
 
     if manaLow and not onViper then
         -- Blue pulse: mana low, switch to Viper
-        self.pulseColor = {0.3, 0.5, 1.0}
+        self.pulseColor = PULSE_COLOR_MANA_LOW
     elseif not current then
         -- Maroon pulse: no aspect active
-        self.pulseColor = {0.75, 0.08, 0.12}
+        self.pulseColor = PULSE_COLOR_NO_ASPECT
     else
         -- Aspect active, mana fine: show aspect tint
         self.pulseColor = nil

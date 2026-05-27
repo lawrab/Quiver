@@ -15,6 +15,9 @@ Traps.TRAPS = TRAPS
 
 function Traps:Initialize()
     self.cooldowns = {}
+    for _, trap in ipairs(TRAPS) do
+        self.cooldowns[trap.name] = { start = 0, duration = 0 }
+    end
 end
 
 function Traps:Enable()
@@ -25,7 +28,9 @@ end
 function Traps:UpdateCooldowns()
     for _, trap in ipairs(TRAPS) do
         local start, duration = GetSpellCooldown(trap.name)
-        self.cooldowns[trap.name] = { start = start, duration = duration }
+        local cd = self.cooldowns[trap.name]
+        cd.start    = start    or 0
+        cd.duration = duration or 0
     end
     Quiver.UI.Menus:UpdateTrapCooldowns()
 end
