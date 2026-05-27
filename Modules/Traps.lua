@@ -36,6 +36,3 @@ function Traps:GetCooldown(trapName)
     return math.max(0, cd.start + cd.duration - GetTime())
 end
 
-function Traps:Cast(trapName)
-    CastSpellByName(trapName)
-end

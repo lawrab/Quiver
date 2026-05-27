@@ -68,6 +68,3 @@ function Aspects:GetCurrentColor()
     return unpack(Aspects.DEFAULT_COLOR)
 end
 
-function Aspects:Cast(aspectName)
-    CastSpellByName(aspectName)
-end

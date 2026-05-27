@@ -26,8 +26,6 @@ Quiver.defaults = {
         },
     },
     char = {
-        lastAspect = nil,
-        lastTracking = nil,
         menuSelections = {},
     },
 }

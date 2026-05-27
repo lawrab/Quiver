@@ -35,7 +35,3 @@ function Tracking:UpdateTracking()
     Quiver.UI.Sphere:UpdateTrackingIndicator()
 end
 
-function Tracking:Cast(spellName)
-    CastSpellByName(spellName)
-    Quiver.db.char.lastTracking = spellName
-end

@@ -54,6 +54,3 @@ function Stings:GetTimeRemaining()
     return math.max(0, self.expires - GetTime())
 end
 
-function Stings:Cast(stingName)
-    CastSpellByName(stingName)
-end

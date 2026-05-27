@@ -111,7 +111,3 @@ function Pet:GetSuitableFood()
     return result
 end
 
-function Pet:CallPet()   CastSpellByName("Call Pet")    end
-function Pet:DismissPet() CastSpellByName("Dismiss Pet") end
-function Pet:RevivePet() CastSpellByName("Revive Pet")  end
-function Pet:MendPet()   CastSpellByName("Mend Pet")    end
