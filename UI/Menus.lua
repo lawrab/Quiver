@@ -104,6 +104,19 @@ local function MakeActionButton(label, icon, spellCast)
     local keydown = GetCVarBool("ActionButtonUseKeyDown")
     b:RegisterForClicks(keydown and "AnyDown" or "AnyUp")
     b:Hide()
+
+    -- Non-secure blocker frame: sits on top of b when the menu is closed so
+    -- right-clicks don't ghost-fire the hidden secure button's macro.
+    -- Normal frames can be shown/hidden freely during combat lockdown;
+    -- EnableMouse on a SecureActionButtonTemplate cannot.
+    local blocker = CreateFrame("Frame", nil, UIParent)
+    blocker:SetAllPoints(b)
+    blocker:SetFrameStrata("DIALOG")
+    blocker:SetFrameLevel(b:GetFrameLevel() + 1)
+    blocker:EnableMouse(true)
+    blocker:Hide()   -- starts hidden alongside b
+    b.blocker = blocker
+
     b:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:AddLine(label)
@@ -177,6 +190,7 @@ local function PopulateMenu(menu)
     -- Hide and release old buttons (can't destroy frames in WoW)
     for _, b in ipairs(menu.buttons) do
         b:Hide()
+        if b.blocker then b.blocker:Hide() end
         b:ClearAllPoints()
     end
     menu.buttons = {}
@@ -260,6 +274,7 @@ local function PopulateMenu(menu)
         end
         b:Show()
         b:SetAlpha(0)
+        if b.blocker then b.blocker:Show() end
     end
 
     if #menu.buttons == 0 then
@@ -414,6 +429,7 @@ function Menus:Toggle(menuName)
 
     for _, b in ipairs(menu.buttons) do
         b:SetAlpha(1)
+        if b.blocker then b.blocker:Hide() end
     end
     activeMenu = menuName
     if menuName == "traps" then
@@ -427,6 +443,7 @@ function Menus:HideAll()
     for _, menu in pairs(self.menus) do
         for _, b in ipairs(menu.buttons) do
             b:SetAlpha(0)
+            if b.blocker then b.blocker:Show() end
         end
     end
     self:HideFoodPicker()
