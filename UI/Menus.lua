@@ -467,7 +467,7 @@ function Menus:UpdateTrapCooldowns()
 
     -- Mirror the cooldown onto the trigger button
     local triggerBtn = _G["QuiverBtn_traps"]
-    if triggerBtn and triggerBtn.cdDim then
+    if triggerBtn and triggerBtn.cdDim and triggerBtn.cdText then
         local triggerTex = triggerBtn:GetNormalTexture()
         if maxRemaining > 0 then
             triggerBtn.cdDim:Show()
@@ -516,9 +516,11 @@ end
 
 function Menus:SelectFood(food)
     if InCombatLockdown() then return end
-    Quiver.db.char.menuSelections["food"]        = food.name
-    Quiver.db.char.menuSelections["foodID"]      = food.itemID
-    Quiver.db.char.menuSelections["foodIsBuff"]  = food.isPetBuff == true
+    Quiver.db.char.menuSelections.food = {
+        name      = food.name,
+        itemID    = food.itemID,
+        isPetBuff = food.isPetBuff == true,
+    }
     local btn = _G["QuiverBtn_food"]
     if btn then
         local icon = food.icon
@@ -560,7 +562,8 @@ function Menus:RefreshFoodOrbitCount()
     local btn = _G["QuiverBtn_food"]
     if not btn or not btn.countText then return end
     local totalCount = 0
-    local savedID = Quiver.db and Quiver.db.char.menuSelections["foodID"]
+    local fs = Quiver.db and Quiver.db.char.menuSelections.food
+    local savedID = fs and fs.itemID
     if savedID then
         for bag = 0, 4 do
             for slot = 1, C_Container.GetContainerNumSlots(bag) do
@@ -656,7 +659,8 @@ function Menus:RebuildFoodPicker()
 
     -- Restore orbit button state from saved selection — update icon/macro/tooltip
     -- directly; never call SelectFood here (that closes the picker as a side effect).
-    local savedName = Quiver.db and Quiver.db.char.menuSelections["food"]
+    local fs = Quiver.db and Quiver.db.char.menuSelections.food
+    local savedName = fs and fs.name
     local btn = _G["QuiverBtn_food"]
     if not btn or InCombatLockdown() then return end
 
@@ -672,10 +676,10 @@ function Menus:RebuildFoodPicker()
             icon      = foundFood.icon
             isPetBuff = foundFood.isPetBuff == true
         else
-            local savedID = Quiver.db.char.menuSelections["foodID"]
+            local savedID = fs and fs.itemID
             if savedID then icon = select(10, GetItemInfo(savedID)) end
             if not icon or icon == 0 then icon = select(10, GetItemInfo(savedName)) end
-            isPetBuff = Quiver.db.char.menuSelections["foodIsBuff"] == true
+            isPetBuff = fs and fs.isPetBuff == true
         end
         if not icon or icon == 0 then icon = nil end
 
