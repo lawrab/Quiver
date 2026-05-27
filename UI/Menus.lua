@@ -479,6 +479,9 @@ function Menus:HideAll()
     self:HideFoodPicker()
     cdTicker:Hide()
     activeMenu = nil
+    -- Re-evaluate ticker now that activeMenu is nil: if any trap is still on
+    -- cooldown this call will restart cdTicker so the trigger countdown stays live.
+    self:UpdateTrapCooldowns()
 end
 
 function Menus:UpdateTrapCooldowns()
@@ -541,6 +544,18 @@ function Menus:UpdateTrapCooldowns()
             triggerBtn.cdText:Hide()
             if triggerTex then triggerTex:SetDesaturated(false) end
         end
+    end
+
+    -- Ticker lifecycle: keep cdTicker running whenever a trap is on cooldown so
+    -- the trigger button countdown stays live even with the menu closed.
+    -- Stop it only when no traps are cooling down and the menu is also closed.
+    if maxRemaining > 0 then
+        if not cdTicker:IsShown() then
+            cdTickerElapsed = 0
+            cdTicker:Show()
+        end
+    elseif not menuOpen then
+        cdTicker:Hide()
     end
 end
 
