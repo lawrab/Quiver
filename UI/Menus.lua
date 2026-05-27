@@ -485,34 +485,49 @@ function Menus:UpdateTrapCooldowns()
     local trapMenu = self.menus and self.menus.traps
     if not trapMenu then return end
 
+    -- Use pre-computed cooldown data from the Traps module — avoids redundant
+    -- GetSpellCooldown calls since Traps:UpdateCooldowns already read them and
+    -- this function is called from that same code path (SPELL_UPDATE_COOLDOWN).
+    local trapsData = Quiver.Modules.Traps.cooldowns
+    local now = GetTime()
+    local menuOpen = (activeMenu == "traps")
+
     local maxRemaining, maxStart, maxDuration = 0, 0, 0
     for _, b in ipairs(trapMenu.buttons) do
         if b.cdSpell then
-            local start, duration = GetSpellCooldown(b.cdSpell)
-            local remaining = (start and duration and duration > 1.5) and (start + duration - GetTime()) or 0
-            if remaining > 0 then
-                if b.cdFrame then b.cdFrame:SetCooldown(start, duration) end
-                if b.cdDim  then b.cdDim:Show() end
-                if b.cdText then
-                    b.cdText:SetText(remaining >= 10 and math.floor(remaining) or string.format("%.1f", remaining))
-                    b.cdText:Show()
+            local cd        = trapsData and trapsData[b.cdSpell]
+            local start     = (cd and cd.start)    or 0
+            local duration  = (cd and cd.duration) or 0
+            local remaining = (duration > 1.5) and math.max(0, start + duration - now) or 0
+
+            if remaining > maxRemaining then
+                maxRemaining, maxStart, maxDuration = remaining, start, duration
+            end
+
+            -- Only update per-button visuals when the menu is actually open;
+            -- when closed the buttons are invisible and the work is wasted.
+            if menuOpen then
+                if remaining > 0 then
+                    if b.cdFrame then b.cdFrame:SetCooldown(start, duration) end
+                    if b.cdDim  then b.cdDim:Show() end
+                    if b.cdText then
+                        b.cdText:SetText(remaining >= 10 and math.floor(remaining) or string.format("%.1f", remaining))
+                        b.cdText:Show()
+                    end
+                    local tex = b:GetNormalTexture()
+                    if tex then tex:SetDesaturated(true) end
+                else
+                    if b.cdFrame then b.cdFrame:SetCooldown(0, 0) end
+                    if b.cdDim  then b.cdDim:Hide() end
+                    if b.cdText then b.cdText:Hide() end
+                    local tex = b:GetNormalTexture()
+                    if tex then tex:SetDesaturated(false) end
                 end
-                local tex = b:GetNormalTexture()
-                if tex then tex:SetDesaturated(true) end
-                if remaining > maxRemaining then
-                    maxRemaining, maxStart, maxDuration = remaining, start, duration
-                end
-            else
-                if b.cdFrame then b.cdFrame:SetCooldown(0, 0) end
-                if b.cdDim  then b.cdDim:Hide() end
-                if b.cdText then b.cdText:Hide() end
-                local tex = b:GetNormalTexture()
-                if tex then tex:SetDesaturated(false) end
             end
         end
     end
 
-    -- Mirror the cooldown onto the trigger button
+    -- Mirror the aggregate cooldown onto the trigger button (always updated)
     local triggerBtn = _G["QuiverBtn_traps"]
     if triggerBtn and triggerBtn.cdDim and triggerBtn.cdText then
         local triggerTex = triggerBtn:GetNormalTexture()

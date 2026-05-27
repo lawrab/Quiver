@@ -45,7 +45,9 @@ function Sphere:Initialize()
     self.ammoText = ammoText
 
     -- Pet happiness ring border around the sphere
-    local petRing = f:CreateTexture(nil, "BACKGROUND")
+    -- BORDER layer sits above the BACKGROUND sphere texture, ensuring the ring
+    -- is always visible regardless of draw order within the same sublayer.
+    local petRing = f:CreateTexture(nil, "BORDER")
     petRing:SetTexture("Interface\\AddOns\\Quiver\\Media\\ring")
     petRing:SetPoint("CENTER", f, "CENTER", 0, 0)
     petRing:SetWidth(SPHERE_SIZE)
