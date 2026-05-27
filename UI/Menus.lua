@@ -79,28 +79,18 @@ end
 
 -- ── Button creation ───────────────────────────────────────────────────────────
 
-local function MakeActionButton(label, icon, spellCast)
+-- Creates a blank action button with fixed properties only (size, strata,
+-- blocker). Spell-specific attributes, icons, and scripts are applied later
+-- in PopulateMenu so the same frame can be reconfigured on every rebuild
+-- instead of being abandoned and replaced (which leaks C-side WoW frames).
+local function CreateBlankButton()
     local b = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
     b:SetWidth(BUTTON_SIZE)
     b:SetHeight(BUTTON_SIZE)
     b:SetFrameStrata("DIALOG")
-    b:SetNormalTexture(icon or "Interface\\Buttons\\UI-Quickslot2")
+    b:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2")
     b:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress")
     b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
-    if spellCast then
-        local macroText
-        if type(spellCast) == "number" then
-            local name = GetSpellInfo(spellCast)
-            macroText = name and ("/cast " .. name) or nil
-        else
-            macroText = "/cast " .. spellCast
-        end
-        if macroText then
-            b:SetAttribute("type2", "macro")
-            b:SetAttribute("macrotext2", macroText)
-        end
-    end
-    -- Match ActionButtonUseKeyDown CVar so click fires at the right time
     local keydown = GetCVarBool("ActionButtonUseKeyDown")
     b:RegisterForClicks(keydown and "AnyDown" or "AnyUp")
     b:Hide()
@@ -114,17 +104,9 @@ local function MakeActionButton(label, icon, spellCast)
     blocker:SetFrameStrata("DIALOG")
     blocker:SetFrameLevel(b:GetFrameLevel() + 1)
     blocker:EnableMouse(true)
-    blocker:Hide()   -- starts hidden alongside b
+    blocker:Hide()
     b.blocker = blocker
 
-    b:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(label)
-        GameTooltip:AddLine("Left-click: select for quick-cast", 0.6, 0.6, 0.6)
-        GameTooltip:AddLine("Right-click: cast now", 0.6, 0.6, 0.6)
-        GameTooltip:Show()
-    end)
-    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
     return b
 end
 
@@ -187,47 +169,85 @@ local function UpdateTriggerReadiness(menu)
 end
 
 local function PopulateMenu(menu)
-    -- Hide and release old buttons (can't destroy frames in WoW)
-    for _, b in ipairs(menu.buttons) do
+    -- Reset all pool buttons — reuse them rather than creating new frames.
+    -- WoW cannot destroy frames; creating new ones on every RebuildAll leaks
+    -- C-side frame memory that persists for the entire session.
+    for _, b in ipairs(menu.pool) do
         b:Hide()
         if b.blocker then b.blocker:Hide() end
         b:ClearAllPoints()
+        b.isFeedButton = nil
+        b.cdSpell      = nil
     end
     menu.buttons = {}
 
+    local poolIndex = 0
     for _, entry in ipairs(menu.entries) do
         if not entry.spell or IsSpellKnown(entry.spell) then
+            poolIndex = poolIndex + 1
+            local b = menu.pool[poolIndex]
+            if not b then break end   -- pool sized to #entries; shouldn't happen
+
+            -- Resolve icon and cast target for this entry
             local icon = entry.icon
             local spellId = entry.spell and GetSpellId(entry.spell)
-            -- cast target: numeric ID when available, spell name as fallback
             local castTarget = spellId or entry.spell
             if not icon and castTarget then
                 local _, _, spellIcon = GetSpellInfo(castTarget)
                 icon = spellIcon
             end
-            local b = MakeActionButton(entry.label, icon, castTarget)
-            if entry.showCooldown and entry.spell then
-                local cd = CreateFrame("Cooldown", nil, b)
-                cd:SetAllPoints(b)
-                cd.noOCC = true
-                cd.noCooldownCount = true
-                b.cdFrame = cd
-                b.cdSpell = entry.spell
-                -- Dark tint over the icon — definitely visible even if Cooldown
-                -- frame sweep doesn't render in this WoW build.
-                local cdDim = b:CreateTexture(nil, "OVERLAY")
-                cdDim:SetAllPoints(b)
-                cdDim:SetTexture(0, 0, 0, 0.65)
-                cdDim:Hide()
-                b.cdDim = cdDim
-                local cdText = b:CreateFontString(nil, "OVERLAY")
-                cdText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
-                cdText:SetPoint("CENTER", b, "CENTER", 0, 0)
-                cdText:SetJustifyH("CENTER")
-                cdText:SetTextColor(1, 1, 1)
-                cdText:Hide()
-                b.cdText = cdText
+
+            -- Update icon textures
+            b:SetNormalTexture(icon or "Interface\\Buttons\\UI-Quickslot2")
+            b:SetPushedTexture(icon or "Interface\\Buttons\\UI-Quickslot-Depress")
+
+            -- Update secure right-click macro
+            if castTarget then
+                local macroText
+                if type(castTarget) == "number" then
+                    local name = GetSpellInfo(castTarget)
+                    macroText = name and ("/cast " .. name) or nil
+                else
+                    macroText = "/cast " .. castTarget
+                end
+                if macroText then
+                    b:SetAttribute("type2", "macro")
+                    b:SetAttribute("macrotext2", macroText)
+                else
+                    b:SetAttribute("type2", nil)
+                    b:SetAttribute("macrotext2", nil)
+                end
+            else
+                b:SetAttribute("type2", nil)
+                b:SetAttribute("macrotext2", nil)
             end
+
+            -- Cooldown display — frames created once per pool slot on first use
+            if entry.showCooldown and entry.spell then
+                b.cdSpell = entry.spell
+                if not b.cdFrame then
+                    local cd = CreateFrame("Cooldown", nil, b)
+                    cd:SetAllPoints(b)
+                    cd.noOCC = true
+                    cd.noCooldownCount = true
+                    b.cdFrame = cd
+                    local cdDim = b:CreateTexture(nil, "OVERLAY")
+                    cdDim:SetAllPoints(b)
+                    cdDim:SetTexture(0, 0, 0, 0.65)
+                    cdDim:Hide()
+                    b.cdDim = cdDim
+                    local cdText = b:CreateFontString(nil, "OVERLAY")
+                    cdText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
+                    cdText:SetPoint("CENTER", b, "CENTER", 0, 0)
+                    cdText:SetJustifyH("CENTER")
+                    cdText:SetTextColor(1, 1, 1)
+                    cdText:Hide()
+                    b.cdText = cdText
+                end
+            end
+
+            -- Click and tooltip scripts (re-bound each rebuild; closures capture
+            -- stable entry table references so this is correct and cheap)
             local capturedEntry = entry
             if entry.action == "feed" then
                 b.isFeedButton = true
@@ -248,12 +268,22 @@ local function PopulateMenu(menu)
                 end)
                 b:SetScript("OnLeave", function() GameTooltip:Hide() end)
             else
+                local label = entry.label
                 b:SetScript("PostClick", function(_, button)
                     if button == "LeftButton" then
                         Menus:SelectEntry(menu, capturedEntry)
                     end
                 end)
+                b:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                    GameTooltip:AddLine(label)
+                    GameTooltip:AddLine("Left-click: select for quick-cast", 0.6, 0.6, 0.6)
+                    GameTooltip:AddLine("Right-click: cast now", 0.6, 0.6, 0.6)
+                    GameTooltip:Show()
+                end)
+                b:SetScript("OnLeave", function() GameTooltip:Hide() end)
             end
+
             table.insert(menu.buttons, b)
         end
     end
@@ -749,11 +779,14 @@ end
 -- ── Menu definitions ──────────────────────────────────────────────────────────
 
 local function NewMenu(btnName, growLeft, entries)
+    local pool = {}
+    for i = 1, #entries do pool[i] = CreateBlankButton() end
     return {
         triggerName = btnName,
         growLeft    = growLeft,
         entries     = entries,
         buttons     = {},
+        pool        = pool,
     }
 end
 
