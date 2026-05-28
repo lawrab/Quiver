@@ -12,17 +12,36 @@ local STINGS = {
 }
 Stings.STINGS = STINGS
 
+local STINGS_BY_NAME = {}
+for _, s in ipairs(STINGS) do STINGS_BY_NAME[s.name] = s end
+
 function Stings:Initialize()
     self.active = nil
     self.expires = 0
 end
 
 function Stings:Enable()
-    Quiver:RegisterEvent("UNIT_AURA", function(_, unit)
-        if unit == "target" then self:ScanTarget() end
-    end)
     Quiver:RegisterEvent("PLAYER_TARGET_CHANGED", function() self:ScanTarget() end)
     self:ScanTarget()
+    Quiver:RegisterEvent("UNIT_AURA", function(_, unit, updateInfo)
+        if unit ~= "target" then return end
+        -- updateInfo is nil on older Classic clients; fall through to full scan.
+        if updateInfo and not updateInfo.isFullUpdate then
+            local relevant = false
+            if updateInfo.addedAuras then
+                for _, aura in ipairs(updateInfo.addedAuras) do
+                    if STINGS_BY_NAME[aura.name] and aura.sourceUnit == "player" then
+                        relevant = true; break
+                    end
+                end
+            end
+            if not relevant and self.active and updateInfo.removedAuraInstanceIDs then
+                relevant = #updateInfo.removedAuraInstanceIDs > 0
+            end
+            if not relevant then return end
+        end
+        self:ScanTarget()
+    end)
 end
 
 function Stings:ScanTarget()
@@ -35,15 +54,13 @@ function Stings:ScanTarget()
         local name, _, _, _, _, duration, expirationTime, unitCaster = UnitDebuff("target", i)
         if not name then break end
         if unitCaster == "player" then
-            for _, sting in ipairs(STINGS) do
-                if name == sting.name then
-                    self.active = sting
-                    self.expires = expirationTime
-                    break
-                end
+            local sting = STINGS_BY_NAME[name]
+            if sting then
+                self.active = sting
+                self.expires = expirationTime
+                break
             end
         end
-        if self.active then break end
     end
 
     Quiver.UI.Sphere:UpdateStingDisplay()

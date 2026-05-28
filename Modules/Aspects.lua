@@ -16,6 +16,9 @@ local ASPECTS = {
 }
 Aspects.ASPECTS = ASPECTS
 
+local ASPECTS_BY_NAME = {}
+for _, a in ipairs(ASPECTS) do ASPECTS_BY_NAME[a.name] = a end
+
 -- Default sphere color when no aspect is active
 Aspects.DEFAULT_COLOR = {0.5, 0.5, 0.5}
 
@@ -26,23 +29,23 @@ end
 function Aspects:Enable()
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:DetectCurrentAspect() end)
     self:DetectCurrentAspect()
-
-    -- Poll every second; UNIT_AURA is unreliable for aspect detection in
-    -- TBC Classic Anniversary and its updateInfo payload creates a new table
-    -- on every fire, generating GC pressure at 10-20 fires/sec in combat.
-    local elapsed = 0
-    self.ticker = CreateFrame("Frame")
-    self.ticker:SetScript("OnUpdate", function(_, dt)
-        elapsed = elapsed + dt
-        if elapsed >= 1.0 then
-            elapsed = 0
-            self:DetectCurrentAspect()
+    Quiver:RegisterEvent("UNIT_AURA", function(_, unit, updateInfo)
+        if unit ~= "player" then return end
+        -- updateInfo is nil on older Classic clients; fall through to full scan.
+        if updateInfo and not updateInfo.isFullUpdate then
+            local relevant = false
+            if updateInfo.addedAuras then
+                for _, aura in ipairs(updateInfo.addedAuras) do
+                    if ASPECTS_BY_NAME[aura.name] then relevant = true; break end
+                end
+            end
+            if not relevant and self.current and updateInfo.removedAuraInstanceIDs then
+                relevant = #updateInfo.removedAuraInstanceIDs > 0
+            end
+            if not relevant then return end
         end
+        self:DetectCurrentAspect()
     end)
-end
-
-function Aspects:Disable()
-    if self.ticker then self.ticker:Hide() end
 end
 
 function Aspects:DetectCurrentAspect()
@@ -52,19 +55,14 @@ function Aspects:DetectCurrentAspect()
     while true do
         local name = UnitBuff("player", i)
         if not name then break end
-        for _, aspect in ipairs(ASPECTS) do
-            if name == aspect.name then
-                self.current = aspect
-                if self.current ~= prev then
-                    Quiver.UI.Sphere:UpdateColor()
-                end
-                return
-            end
+        local aspect = ASPECTS_BY_NAME[name]
+        if aspect then
+            self.current = aspect
+            break
         end
         i = i + 1
     end
-    -- No aspect found; only update the sphere if the aspect was just removed.
-    if prev ~= nil then
+    if self.current ~= prev then
         Quiver.UI.Sphere:UpdateColor()
     end
 end
