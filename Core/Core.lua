@@ -61,5 +61,6 @@ end
 
 function Core:Disable()
     Quiver.Modules.Mana:Disable()
+    Quiver.Modules.Aspects:Disable()
     Quiver.Modules.Pet:Disable()
 end
