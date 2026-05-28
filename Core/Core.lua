@@ -43,6 +43,7 @@ function Core:Initialize()
     Quiver.Modules.Pet:Initialize()
     Quiver.Modules.Traps:Initialize()
     Quiver.Modules.Tracking:Initialize()
+    Quiver.Modules.AutoShot:Initialize()
 
     Quiver.UI.Sphere:Initialize()
     Quiver.UI.Menus:Initialize()
@@ -55,10 +56,12 @@ function Core:Enable()
     Quiver.Modules.Pet:Enable()
     Quiver.Modules.Traps:Enable()
     Quiver.Modules.Tracking:Enable()
+    Quiver.Modules.AutoShot:Enable()
 end
 
 function Core:Disable()
     Quiver.Modules.Mana:Disable()
     Quiver.Modules.Aspects:Disable()
     Quiver.Modules.Pet:Disable()
+    Quiver.Modules.AutoShot:Disable()
 end

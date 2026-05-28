@@ -35,6 +35,7 @@ Modules\Aspects.lua
 Modules\Pet.lua
 Modules\Traps.lua
 Modules\Tracking.lua
+Modules\AutoShot.lua
 
 # UI
 UI\Sphere.lua

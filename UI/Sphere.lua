@@ -6,6 +6,7 @@ Quiver.UI = Quiver.UI or {}
 Quiver.UI.Sphere = Sphere
 
 local SPHERE_SIZE = 80
+local _autoShotMod  -- cached after Initialize; avoids global chain lookup every frame
 local INDICATOR_SIZE = 12
 
 -- Pre-allocated pulse color constants — reused every frame, never re-created
@@ -117,11 +118,30 @@ function Sphere:Initialize()
 
     f:Show()
 
+    -- Auto-shot bar below the sphere
+    local barBg = CreateFrame("Frame", nil, UIParent)
+    barBg:SetWidth(SPHERE_SIZE)
+    barBg:SetHeight(6)
+    barBg:SetPoint("TOP", f, "BOTTOM", 0, -4)
+    local barBgTex = barBg:CreateTexture(nil, "BACKGROUND")
+    barBgTex:SetAllPoints(barBg)
+    barBgTex:SetTexture(0.1, 0.1, 0.1, 0.7)
+    local barFill = barBg:CreateTexture(nil, "ARTWORK")
+    barFill:SetTexture(1.0, 0.7, 0.0, 1.0)
+    barFill:SetPoint("LEFT", barBg, "LEFT", 0, 0)
+    barFill:SetHeight(6)
+    barFill:SetWidth(0)
+    self.autoShotBar   = barBg
+    self.autoShotFill  = barFill
+    barBg:Hide()
+    _autoShotMod = Quiver.Modules.AutoShot
+
     -- Separate plain frame for animation — SecureActionButtonTemplate can block OnUpdate
     local ticker = CreateFrame("Frame", nil, UIParent)
     ticker:SetScript("OnUpdate", function(_, dt)
         Sphere:_UpdatePulse()
         Sphere:_UpdateRipple(dt)
+        Sphere:_UpdateAutoShotBar(dt)
     end)
     self.ticker = ticker
 end
@@ -361,4 +381,23 @@ function Sphere:_UpdateRipple(dt)
     self.ripple:SetWidth(SPHERE_SIZE * (1 + progress * 1.5))
     self.ripple:SetHeight(SPHERE_SIZE * (1 + progress * 1.5))
     self.ripple:SetAlpha(0.75 * (1 - progress))
+end
+
+function Sphere:UpdateAutoShotBar()
+    if not self.autoShotBar then return end
+    if _autoShotMod and _autoShotMod:ShouldShow() then
+        self.autoShotBar:Show()
+    else
+        self.autoShotBar:Hide()
+    end
+end
+
+function Sphere:_UpdateAutoShotBar(dt)
+    if not _autoShotMod or not self.autoShotFill then return end
+    _autoShotMod:Tick(dt)
+    if not self.autoShotBar:IsShown() then return end
+    local progress = _autoShotMod:GetProgress()
+    local w = SPHERE_SIZE * progress
+    if w < 0 then w = 0 end
+    self.autoShotFill:SetWidth(w)
 end
