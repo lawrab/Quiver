@@ -913,11 +913,14 @@ function Menus:Initialize()
             Menus:RebuildAll()
         end
     end)
+    Quiver:RegisterEvent("BAG_UPDATE", function()
+        if not foodPickerOpen then
+            Menus:RefreshFoodOrbitCount()
+        end
+    end)
     Quiver:RegisterEvent("BAG_UPDATE_DELAYED", function()
         if foodPickerOpen then
             Menus:RefreshFoodPicker()
-        else
-            Menus:RefreshFoodOrbitCount()
         end
     end)
 
