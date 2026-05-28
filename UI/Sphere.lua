@@ -9,9 +9,11 @@ local SPHERE_SIZE = 80
 local _autoShotMod  -- cached after Initialize; avoids global chain lookup every frame
 local INDICATOR_SIZE = 12
 
--- Pre-allocated pulse color constants — reused every frame, never re-created
+-- Pre-allocated color constants — reused every call, never re-created
 local PULSE_COLOR_MANA_LOW  = {0.3,  0.5,  1.0 }
 local PULSE_COLOR_NO_ASPECT = {0.75, 0.08, 0.12}
+local BAR_COLOR_NORMAL      = {1.0,  0.7,  0.0 }  -- gold
+local BAR_COLOR_HASTE       = {0.3,  0.9,  1.0 }  -- cyan: Rapid Fire / haste proc
 
 local function BindingLabel(bType, spell, macro)
     if bType == "spell" and spell ~= "none" then return spell end
@@ -127,7 +129,8 @@ function Sphere:Initialize()
     barBgTex:SetAllPoints(barBg)
     barBgTex:SetTexture(0.1, 0.1, 0.1, 0.7)
     local barFill = barBg:CreateTexture(nil, "ARTWORK")
-    barFill:SetTexture(1.0, 0.7, 0.0, 1.0)
+    barFill:SetTexture(1, 1, 1, 1)
+    barFill:SetVertexColor(BAR_COLOR_NORMAL[1], BAR_COLOR_NORMAL[2], BAR_COLOR_NORMAL[3], 1)
     barFill:SetPoint("LEFT", barBg, "LEFT", 0, 0)
     barFill:SetHeight(6)
     barFill:SetWidth(0)
@@ -390,6 +393,12 @@ function Sphere:UpdateAutoShotBar()
     else
         self.autoShotBar:Hide()
     end
+end
+
+function Sphere:UpdateAutoShotBarColor(boosted)
+    if not self.autoShotFill then return end
+    local c = boosted and BAR_COLOR_HASTE or BAR_COLOR_NORMAL
+    self.autoShotFill:SetVertexColor(c[1], c[2], c[3], 1)
 end
 
 function Sphere:_UpdateAutoShotBar(dt)

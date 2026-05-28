@@ -8,13 +8,14 @@ Quiver.Modules.AutoShot = AutoShot
 local AUTO_CAST_WINDOW = 0.5  -- seconds Aimed Shot clips timer to
 
 function AutoShot:Initialize()
-    self.speed     = 0
-    self.shotTimer = 0
-    self.shooting  = false
-    self.casting   = false
-    self.moving    = false
-    self.inCombat  = false
-    self.hasTarget = false
+    self.speed        = 0
+    self.shotTimer    = 0
+    self.shooting     = false
+    self.casting      = false
+    self.moving       = false
+    self.inCombat     = false
+    self.hasTarget    = false
+    self.speedBoosted = false
 end
 
 function AutoShot:Enable()
@@ -58,10 +59,12 @@ end
 
 function AutoShot:OnEvent(event, unit, spellID)
     if event == "START_AUTOREPEAT_SPELL" then
-        self.shooting  = true
-        local speed    = UnitRangedDamage("player")
-        self.speed     = speed or 0
-        self.shotTimer = self.speed
+        self.shooting     = true
+        self.speedBoosted = false
+        local speed       = UnitRangedDamage("player")
+        self.speed        = speed or 0
+        self.shotTimer    = self.speed
+        Quiver.UI.Sphere:UpdateAutoShotBarColor(false)
         Quiver.UI.Sphere:UpdateAutoShotBar()
 
     elseif event == "STOP_AUTOREPEAT_SPELL" then
@@ -80,6 +83,11 @@ function AutoShot:OnEvent(event, unit, spellID)
         local newSpeed = UnitRangedDamage("player")
         if newSpeed and newSpeed > 0 and self.speed > 0 then
             self.shotTimer = self.shotTimer * (newSpeed / self.speed)
+            local boosted = newSpeed < self.speed * 0.99
+            if boosted ~= self.speedBoosted then
+                self.speedBoosted = boosted
+                Quiver.UI.Sphere:UpdateAutoShotBarColor(boosted)
+            end
         end
         self.speed = newSpeed or self.speed
 
@@ -121,12 +129,14 @@ function AutoShot:OnEvent(event, unit, spellID)
         Quiver.UI.Sphere:UpdateAutoShotBar()
 
     elseif event == "PLAYER_ENTERING_WORLD" then
-        local speed    = UnitRangedDamage("player")
-        self.speed     = speed or 0
-        self.shotTimer = self.speed
-        self.moving    = false
-        self.inCombat  = UnitAffectingCombat("player") and true or false
-        self.hasTarget = UnitExists("target") and true or false
+        local speed       = UnitRangedDamage("player")
+        self.speed        = speed or 0
+        self.shotTimer    = self.speed
+        self.moving       = false
+        self.speedBoosted = false
+        self.inCombat     = UnitAffectingCombat("player") and true or false
+        self.hasTarget    = UnitExists("target") and true or false
+        Quiver.UI.Sphere:UpdateAutoShotBarColor(false)
         Quiver.UI.Sphere:UpdateAutoShotBar()
     end
 end
