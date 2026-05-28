@@ -29,13 +29,21 @@ end
 function Aspects:Enable()
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:DetectCurrentAspect() end)
     -- Use a raw WoW frame so UNIT_AURA and UPDATE_SHAPESHIFT_FORM are independent
-    -- of the AceEvent registration in Stings (which would overwrite a Quiver-object
-    -- registration for the same event).
+    -- of any other AceEvent registrations on the Quiver object (AceEvent keys
+    -- handlers by (addon_object, event), so two RegisterEvent calls for the same
+    -- event on the same object would silently overwrite each other).
     local f = CreateFrame("Frame")
     f:RegisterEvent("UNIT_AURA")
     f:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
-    f:SetScript("OnEvent", function(_, event, unit)
+    f:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    f:SetScript("OnEvent", function(_, event, unit, _, spellID)
         if event == "UNIT_AURA" and unit ~= "player" then return end
+        if event == "UNIT_SPELLCAST_SUCCEEDED" then
+            if unit ~= "player" then return end
+            -- Only scan when the player casts an aspect spell.
+            local name = spellID and GetSpellInfo(spellID)
+            if not (name and ASPECTS_BY_NAME[name]) then return end
+        end
         self:DetectCurrentAspect()
     end)
     self._eventFrame = f

@@ -67,16 +67,6 @@ function Sphere:Initialize()
     petRing:SetVertexColor(0.3, 0.3, 0.3, 0)
     self.petRing = petRing
 
-    -- Sting duration bar (bottom of sphere)
-    local stingBar = CreateFrame("StatusBar", nil, f)
-    stingBar:SetWidth(SPHERE_SIZE - 8)
-    stingBar:SetHeight(4)
-    stingBar:SetPoint("BOTTOM", f, "BOTTOM", 0, -8)
-    stingBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-    stingBar:SetStatusBarColor(0.2, 0.8, 0.2)
-    stingBar:SetMinMaxValues(0, 1)
-    stingBar:SetValue(0)
-    self.stingBar = stingBar
 
     f:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -348,18 +338,6 @@ function Sphere:UpdatePetIndicator()
     end
 end
 
-function Sphere:UpdateStingDisplay()
-    if not self.stingBar then return end
-    local sting = Quiver.Modules.Stings.active
-    if sting then
-        local remaining = Quiver.Modules.Stings:GetTimeRemaining()
-        self.stingBar:SetMinMaxValues(0, sting.duration)
-        self.stingBar:SetValue(remaining)
-        self.stingBar:Show()
-    else
-        self.stingBar:Hide()
-    end
-end
 
 function Sphere:UpdateTrackingIndicator()
     -- TODO: show small tracking icon on sphere edge
