@@ -28,25 +28,36 @@ end
 
 function Aspects:Enable()
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:DetectCurrentAspect() end)
-    Quiver:RegisterEvent("UNIT_AURA", function(_, unit)
-        if unit == "player" then self:DetectCurrentAspect() end
-    end)
+    Quiver:RegisterEvent("UPDATE_SHAPESHIFT_FORM", function() self:DetectCurrentAspect() end)
     self:DetectCurrentAspect()
 end
 
 function Aspects:DetectCurrentAspect()
     self.current = nil
-    local i = 1
-    while true do
-        local name = UnitBuff("player", i)
-        if not name then break end
-        local aspect = ASPECTS_BY_NAME[name]
-        if aspect then
-            self.current = aspect
-            break
+
+    -- Aspects are shapeshifts in TBC; use the shapeshift API as primary source.
+    -- GetShapeshiftFormInfo returns icon, active, castable, spellID (no name).
+    local formIndex = GetShapeshiftForm()
+    if formIndex and formIndex > 0 then
+        local _, _, _, spellID = GetShapeshiftFormInfo(formIndex)
+        if spellID then
+            local name = GetSpellInfo(spellID)
+            if name then self.current = ASPECTS_BY_NAME[name] end
         end
-        i = i + 1
     end
+
+    -- Fallback: UnitBuff scan in case aspects surface as regular buffs on this client.
+    if not self.current then
+        local i = 1
+        while true do
+            local name = UnitBuff("player", i)
+            if not name then break end
+            local aspect = ASPECTS_BY_NAME[name]
+            if aspect then self.current = aspect; break end
+            i = i + 1
+        end
+    end
+
     Quiver.UI.Sphere:UpdateColor()
 end
 
