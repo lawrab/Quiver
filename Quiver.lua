@@ -24,4 +24,5 @@ end
 
 function Quiver:OnDisable()
     self.UI.Sphere:Hide()
+    self.Core:Disable()
 end

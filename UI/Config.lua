@@ -5,6 +5,7 @@ local Config = {}
 Quiver.UI = Quiver.UI or {}
 Quiver.UI.Config = Config
 
+-- Panel is built once and reused; nil until first open.
 local panel = nil
 
 local ITEM_H    = 20
@@ -31,11 +32,11 @@ local function GetSpellEntries()
     return entries
 end
 
--- Creates a full binding section: header + Spell/Macro/None tabs + content area.
--- Returns container with GetType(), GetSpell(), GetMacro().
-local function MakeBindingSection(parent, labelText, initType, initSpell, initMacro, entries)
-    local currentType   = initType  or "spell"
-    local selectedSpell = initSpell or "none"
+-- Creates a binding section frame.  Call :Refresh(entries, initType, initSpell, initMacro)
+-- each time the panel opens to sync content without recreating frames.
+local function MakeBindingSection(parent, labelText)
+    local currentType   = "spell"
+    local selectedSpell = "none"
     local allBtns       = {}
 
     local container = CreateFrame("Frame", nil, parent)
@@ -49,7 +50,7 @@ local function MakeBindingSection(parent, labelText, initType, initSpell, initMa
     hdr:SetTextColor(1, 0.82, 0)
 
     -- ── Tab buttons ─────────────────────────────────────────────────────────
-    local TAB_W  = math.floor(COL_W / 3) - 2
+    local TAB_W   = math.floor(COL_W / 3) - 2
     local tabDefs = { "spell", "macro", "none" }
     local tabBtns = {}
 
@@ -102,7 +103,7 @@ local function MakeBindingSection(parent, labelText, initType, initSpell, initMa
 
     local content = CreateFrame("Frame", nil, sf)
     content:SetWidth(COL_W)
-    content:SetHeight(#entries * ITEM_H)
+    content:SetHeight(ITEM_H)  -- resized in Refresh
     sf:SetScrollChild(content)
 
     local function RefreshHL()
@@ -120,12 +121,12 @@ local function MakeBindingSection(parent, labelText, initType, initSpell, initMa
         end
     end
 
-    for i, entry in ipairs(entries) do
+    local function MakeListButton(i)
         local b = CreateFrame("Button", nil, content)
         b:SetWidth(COL_W)
         b:SetHeight(ITEM_H)
         b:SetPoint("TOPLEFT", 0, -(i - 1) * ITEM_H)
-        b.spellId = entry.id
+        b.spellId = "none"
 
         local selTex = b:CreateTexture(nil, "BACKGROUND")
         selTex:SetAllPoints()
@@ -141,42 +142,25 @@ local function MakeBindingSection(parent, labelText, initType, initSpell, initMa
         accent:Hide()
         b.accent = accent
 
-        -- Use SetHighlightTexture so we control exactly what the hover looks like
         b:SetHighlightTexture("Interface\\ChatFrame\\ChatFrameBackground")
         b:GetHighlightTexture():SetVertexColor(0.9, 0.9, 0.9, 0.12)
 
         local txt = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         txt:SetPoint("LEFT", b, "LEFT", 10, 0)
-        txt:SetText(entry.label)
         b.txt = txt
 
-        -- Brighten text on hover so it stays readable over any highlight
+        -- Scripts reference b.spellId directly so they stay correct across refreshes.
         b:SetScript("OnEnter", function()
-            if b.spellId ~= selectedSpell then
-                b.txt:SetTextColor(1, 1, 1)
-            end
+            if b.spellId ~= selectedSpell then b.txt:SetTextColor(1, 1, 1) end
         end)
         b:SetScript("OnLeave", function()
-            if b.spellId ~= selectedSpell then
-                b.txt:SetTextColor(0.62, 0.62, 0.62)
-            end
+            if b.spellId ~= selectedSpell then b.txt:SetTextColor(0.62, 0.62, 0.62) end
         end)
-
         b:SetScript("OnClick", function()
-            selectedSpell = entry.id
+            selectedSpell = b.spellId
             RefreshHL()
         end)
-        allBtns[i] = b
-    end
-
-    RefreshHL()
-
-    for i, entry in ipairs(entries) do
-        if entry.id == selectedSpell then
-            local y = math.max(0, (i - 1) * ITEM_H - math.floor(ROWS / 2) * ITEM_H)
-            sf:SetVerticalScroll(y)
-            break
-        end
+        return b
     end
 
     -- ── Macro EditBox ────────────────────────────────────────────────────────
@@ -211,7 +195,6 @@ local function MakeBindingSection(parent, labelText, initType, initSpell, initMa
     macroEB:SetAutoFocus(false)
     macroEB:SetFontObject("GameFontNormalSmall")
     macroEB:SetTextInsets(6, 6, 4, 4)
-    macroEB:SetText(initMacro or "")
     macroEB:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     macroSF:SetScrollChild(macroEB)
 
@@ -230,8 +213,45 @@ local function MakeBindingSection(parent, labelText, initType, initSpell, initMa
     noneLbl:SetPoint("CENTER")
     noneLbl:SetText("No action assigned")
 
-    -- Initialise tab state
-    SetActiveTab(currentType)
+    -- ── Refresh ──────────────────────────────────────────────────────────────
+    -- Syncs button pool to current entries and resets selection state.
+    -- Called each time the panel opens — frames are reused, never recreated.
+    function container:Refresh(entries, initType, initSpell, initMacro)
+        currentType   = initType  or "spell"
+        selectedSpell = initSpell or "none"
+        macroEB:SetText(initMacro or "")
+
+        -- Grow the button pool if the spell list has expanded since last open.
+        for i = #allBtns + 1, #entries do
+            allBtns[i] = MakeListButton(i)
+        end
+
+        -- Update visible buttons with current entry data.
+        content:SetHeight(#entries * ITEM_H)
+        for i, entry in ipairs(entries) do
+            local b = allBtns[i]
+            b.spellId = entry.id
+            b.txt:SetText(entry.label)
+            b:Show()
+        end
+        -- Hide pool slots beyond current entry count.
+        for i = #entries + 1, #allBtns do
+            allBtns[i]:Hide()
+        end
+
+        RefreshHL()
+
+        -- Scroll to show the selected entry.
+        for i, entry in ipairs(entries) do
+            if entry.id == selectedSpell then
+                local y = math.max(0, (i - 1) * ITEM_H - math.floor(ROWS / 2) * ITEM_H)
+                sf:SetVerticalScroll(y)
+                break
+            end
+        end
+
+        SetActiveTab(currentType)
+    end
 
     container.GetType  = function() return currentType end
     container.GetSpell = function() return selectedSpell end
@@ -252,7 +272,7 @@ local function Build()
     f:SetScript("OnDragStop",  f.StopMovingOrSizing)
     f:EnableKeyboard(true)
     f:SetScript("OnKeyDown", function(self, key)
-        if key == "ESCAPE" then panel = nil; self:Hide() end
+        if key == "ESCAPE" then self:Hide() end
     end)
 
     f:SetBackdrop({
@@ -272,18 +292,15 @@ local function Build()
 
     local closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, 0)
-    closeBtn:SetScript("OnClick", function() panel = nil; f:Hide() end)
+    closeBtn:SetScript("OnClick", function() f:Hide() end)
 
-    local entries = GetSpellEntries()
-    local sp      = Quiver.db.profile.sphere
-
-    local lcSection = MakeBindingSection(f, "Left Click",
-        sp.leftType  or "spell", sp.leftClick,  sp.leftMacro  or "", entries)
+    local lcSection = MakeBindingSection(f, "Left Click")
     lcSection:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -42)
+    f.lcSection = lcSection
 
-    local rcSection = MakeBindingSection(f, "Right Click",
-        sp.rightType or "spell", sp.rightClick, sp.rightMacro or "", entries)
+    local rcSection = MakeBindingSection(f, "Right Click")
     rcSection:SetPoint("TOPLEFT", lcSection, "BOTTOMLEFT", 0, -GAP)
+    f.rcSection = rcSection
 
     local applyBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     applyBtn:SetWidth(80)
@@ -295,6 +312,7 @@ local function Build()
             print("|cffff4444Quiver:|r Cannot change settings during combat.")
             return
         end
+        local sp      = Quiver.db.profile.sphere
         sp.leftType   = lcSection.GetType()
         sp.leftClick  = lcSection.GetSpell()
         sp.leftMacro  = lcSection.GetMacro()
@@ -302,7 +320,6 @@ local function Build()
         sp.rightClick = rcSection.GetSpell()
         sp.rightMacro = rcSection.GetMacro()
         Quiver.UI.Sphere:UpdateOnClick()
-        panel = nil
         f:Hide()
     end)
 
@@ -311,17 +328,23 @@ local function Build()
     cancelBtn:SetHeight(22)
     cancelBtn:SetText("Cancel")
     cancelBtn:SetPoint("RIGHT", applyBtn, "LEFT", -4, 0)
-    cancelBtn:SetScript("OnClick", function() panel = nil; f:Hide() end)
+    cancelBtn:SetScript("OnClick", function() f:Hide() end)
 
-    f:Show()
+    f:Hide()
     return f
 end
 
 function Config:Toggle()
-    if panel then
+    if not panel then
+        panel = Build()
+    end
+    if panel:IsShown() then
         panel:Hide()
-        panel = nil
         return
     end
-    panel = Build()
+    local entries = GetSpellEntries()
+    local sp      = Quiver.db.profile.sphere
+    panel.lcSection:Refresh(entries, sp.leftType  or "spell", sp.leftClick,  sp.leftMacro  or "")
+    panel.rcSection:Refresh(entries, sp.rightType or "spell", sp.rightClick, sp.rightMacro or "")
+    panel:Show()
 end

@@ -20,14 +20,18 @@ function Mana:Enable()
     self:Check()
 
     local elapsed = 0
-    local ticker = CreateFrame("Frame")
-    ticker:SetScript("OnUpdate", function(_, dt)
+    self.ticker = CreateFrame("Frame")
+    self.ticker:SetScript("OnUpdate", function(_, dt)
         elapsed = elapsed + dt
         if elapsed >= 2.0 then
             elapsed = 0
             self:Check()
         end
     end)
+end
+
+function Mana:Disable()
+    if self.ticker then self.ticker:Hide() end
 end
 
 function Mana:Check()

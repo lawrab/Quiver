@@ -24,17 +24,15 @@ function Aspects:Initialize()
 end
 
 function Aspects:Enable()
-    Quiver:RegisterEvent("UNIT_AURA", function(_, unit)
-        if unit == "player" then self:DetectCurrentAspect() end
-    end)
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:DetectCurrentAspect() end)
     self:DetectCurrentAspect()
 
-    -- Poll every second to catch aspect removal; UNIT_AURA doesn't fire
-    -- reliably when aspects are cancelled in TBC Classic Anniversary.
+    -- Poll every second; UNIT_AURA is unreliable for aspect detection in
+    -- TBC Classic Anniversary and its updateInfo payload creates a new table
+    -- on every fire, generating GC pressure at 10-20 fires/sec in combat.
     local elapsed = 0
-    local ticker = CreateFrame("Frame")
-    ticker:SetScript("OnUpdate", function(_, dt)
+    self.ticker = CreateFrame("Frame")
+    self.ticker:SetScript("OnUpdate", function(_, dt)
         elapsed = elapsed + dt
         if elapsed >= 1.0 then
             elapsed = 0
@@ -43,7 +41,12 @@ function Aspects:Enable()
     end)
 end
 
+function Aspects:Disable()
+    if self.ticker then self.ticker:Hide() end
+end
+
 function Aspects:DetectCurrentAspect()
+    local prev = self.current
     self.current = nil
     local i = 1
     while true do
@@ -52,13 +55,18 @@ function Aspects:DetectCurrentAspect()
         for _, aspect in ipairs(ASPECTS) do
             if name == aspect.name then
                 self.current = aspect
-                Quiver.UI.Sphere:UpdateColor()
+                if self.current ~= prev then
+                    Quiver.UI.Sphere:UpdateColor()
+                end
                 return
             end
         end
         i = i + 1
     end
-    Quiver.UI.Sphere:UpdateColor()
+    -- No aspect found; only update the sphere if the aspect was just removed.
+    if prev ~= nil then
+        Quiver.UI.Sphere:UpdateColor()
+    end
 end
 
 function Aspects:GetCurrentColor()

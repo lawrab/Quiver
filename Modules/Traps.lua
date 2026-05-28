@@ -5,11 +5,11 @@ Quiver.Modules = Quiver.Modules or {}
 Quiver.Modules.Traps = Traps
 
 local TRAPS = {
-    { name = "Frost Trap",       icon = "Interface\\Icons\\Spell_Frost_ChainsOfIce" },
-    { name = "Freezing Trap",    icon = "Interface\\Icons\\Spell_Nature_Stranglevines" },
-    { name = "Immolation Trap",  icon = "Interface\\Icons\\Spell_Fire_SealOfFire" },
-    { name = "Explosive Trap",   icon = "Interface\\Icons\\Spell_Fire_SelectiveInvisibility" },
-    { name = "Snake Trap",       icon = "Interface\\Icons\\Ability_Hunter_SnakeTrap" },
+    { name = "Frost Trap"      },
+    { name = "Freezing Trap"   },
+    { name = "Immolation Trap" },
+    { name = "Explosive Trap"  },
+    { name = "Snake Trap"      },
 }
 Traps.TRAPS = TRAPS
 

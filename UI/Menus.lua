@@ -14,6 +14,15 @@ local activeMenu = nil
 local foodPickerOpen = false
 local foodPickerButtons = {}
 
+-- Pre-built sub-second countdown strings; avoids string.format allocation in the
+-- 0.1 s ticker hot path. Index by math.floor(remaining * 10) where 0 ≤ remaining < 1.
+local TENTHS_STR = {}
+for i = 0, 9 do TENTHS_STR[i] = "0." .. i end
+
+-- Sentinel used to distinguish "never initialised" from nil (no selection).
+-- Ensures UpdateTriggerReadiness always binds OnEnter/OnLeave on the first call.
+local UNSET_SELECTION = {}
+
 -- Trap cooldown ticker.
 -- When the trap menu is open: 0.1 s for smooth expansion-button text.
 -- When menu is closed but a trap is cooling: 0.5 s for the trigger button only.
@@ -146,16 +155,27 @@ end
 local function UpdateTriggerReadiness(menu)
     local triggerBtn = _G[menu.triggerName]
     if not triggerBtn then return end
-    local section = menu.triggerName:match("QuiverBtn_(.+)") or ""
-    section = section:sub(1,1):upper() .. section:sub(2)
-    if menu.selected then
+
+    -- Only rebind scripts when the selection actually changes; SetScript allocates
+    -- a closure every call so skipping identical-state rebinds reduces GC pressure.
+    local nowSelected = menu.selected
+    if nowSelected == menu._lastSelected then
+        -- alpha may still need syncing even without a script change
+        triggerBtn:SetAlpha(nowSelected and 1.0 or 0.6)
+        return
+    end
+    menu._lastSelected = nowSelected
+
+    local section = menu.displayName
+    if nowSelected then
         triggerBtn:SetAlpha(1.0)
-        local spellName = menu.selected.spell or ""
+        local spellName = nowSelected.spell or ""
+        local rightClickLine = "Right-click: " .. spellName
         triggerBtn:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(section)
             GameTooltip:AddLine("Left-click: open menu", 0.6, 0.6, 0.6)
-            GameTooltip:AddLine("Right-click: " .. spellName, 0.4, 1, 0.4)
+            GameTooltip:AddLine(rightClickLine, 0.4, 1, 0.4)
             GameTooltip:Show()
         end)
     else
@@ -182,7 +202,7 @@ local function PopulateMenu(menu)
         b.isFeedButton = nil
         b.cdSpell      = nil
     end
-    menu.buttons = {}
+    wipe(menu.buttons)
 
     local poolIndex = 0
     for _, entry in ipairs(menu.entries) do
@@ -500,7 +520,7 @@ function Menus:UpdateTrapCooldowns()
     local now = GetTime()
     local menuOpen = (activeMenu == "traps")
 
-    local maxRemaining, maxStart, maxDuration = 0, 0, 0
+    local maxRemaining = 0
     for _, b in ipairs(trapMenu.buttons) do
         if b.cdSpell then
             local cd        = trapsData and trapsData[b.cdSpell]
@@ -509,7 +529,7 @@ function Menus:UpdateTrapCooldowns()
             local remaining = (duration > 1.5) and math.max(0, start + duration - now) or 0
 
             if remaining > maxRemaining then
-                maxRemaining, maxStart, maxDuration = remaining, start, duration
+                maxRemaining = remaining
             end
 
             -- Only update per-button visuals when the menu is actually open;
@@ -520,8 +540,7 @@ function Menus:UpdateTrapCooldowns()
                     if b.cdDim  then b.cdDim:Show() end
                     if b.cdText then
                         -- Show tenths only for the last second; integer otherwise.
-                        -- string.format is only called for sub-1s, minimising string churn.
-                        b.cdText:SetText(remaining >= 1 and math.ceil(remaining) or string.format("%.1f", remaining))
+                        b.cdText:SetText(remaining >= 1 and math.ceil(remaining) or TENTHS_STR[math.floor(remaining * 10)] or "0.0")
                         b.cdText:Show()
                     end
                     if b._normalTex then b._normalTex:SetDesaturated(true) end
@@ -536,7 +555,7 @@ function Menus:UpdateTrapCooldowns()
     end
 
     -- Mirror the aggregate cooldown onto the trigger button (always updated)
-    local triggerBtn = _G["QuiverBtn_traps"]
+    local triggerBtn = Menus._trapsTriggerBtn
     if triggerBtn and triggerBtn.cdDim and triggerBtn.cdText then
         -- Cache once; GetNormalTexture() may allocate a new userdata each call
         -- on some WoW client builds, so we avoid calling it every tick.
@@ -546,7 +565,7 @@ function Menus:UpdateTrapCooldowns()
         local triggerTex = triggerBtn._normalTex
         if maxRemaining > 0 then
             triggerBtn.cdDim:Show()
-            triggerBtn.cdText:SetText(maxRemaining >= 1 and math.ceil(maxRemaining) or string.format("%.1f", maxRemaining))
+            triggerBtn.cdText:SetText(maxRemaining >= 1 and math.ceil(maxRemaining) or TENTHS_STR[math.floor(maxRemaining * 10)] or "0.0")
             triggerBtn.cdText:Show()
             if triggerTex then triggerTex:SetDesaturated(true) end
         else
@@ -608,15 +627,17 @@ function Menus:SelectFood(food)
         itemID    = food.itemID,
         isPetBuff = food.isPetBuff == true,
     }
-    local btn = _G["QuiverBtn_food"]
+    local btn = Menus._foodOrbitBtn
     if btn then
         local icon = food.icon
         if not icon or icon == 0 then
             for bag = 0, 4 do
                 for slot = 1, C_Container.GetContainerNumSlots(bag) do
-                    local si = C_Container.GetContainerItemInfo(bag, slot)
-                    if si and si.itemID == food.itemID and (si.iconFileID or 0) ~= 0 then
-                        icon = si.iconFileID; break
+                    if C_Container.GetContainerItemID(bag, slot) == food.itemID then
+                        local si = C_Container.GetContainerItemInfo(bag, slot)
+                        if si and (si.iconFileID or 0) ~= 0 then
+                            icon = si.iconFileID; break
+                        end
                     end
                 end
                 if icon and icon ~= 0 then break end
@@ -634,10 +655,11 @@ function Menus:SelectFood(food)
             btn.countText:SetText(food.count > 1 and tostring(food.count) or "")
         end
         local verb = food.isPetBuff == true and "Right-click: use " or "Right-click: feed "
+        local actionLine = verb .. food.name
         btn:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine("Feed Pet")
-            GameTooltip:AddLine(verb .. food.name, 0.4, 1, 0.4)
+            GameTooltip:AddLine(actionLine, 0.4, 1, 0.4)
             GameTooltip:AddLine("Left-click: open food picker", 0.6, 0.6, 0.6)
             GameTooltip:Show()
         end)
@@ -646,7 +668,7 @@ function Menus:SelectFood(food)
 end
 
 function Menus:RefreshFoodOrbitCount()
-    local btn = _G["QuiverBtn_food"]
+    local btn = Menus._foodOrbitBtn
     if not btn or not btn.countText then return end
     local totalCount = 0
     local fs = Quiver.db and Quiver.db.char.menuSelections.food
@@ -654,9 +676,11 @@ function Menus:RefreshFoodOrbitCount()
     if savedID then
         for bag = 0, 4 do
             for slot = 1, C_Container.GetContainerNumSlots(bag) do
-                local info = C_Container.GetContainerItemInfo(bag, slot)
-                if info and info.itemID == savedID then
-                    totalCount = totalCount + (info.stackCount or 1)
+                if C_Container.GetContainerItemID(bag, slot) == savedID then
+                    local info = C_Container.GetContainerItemInfo(bag, slot)
+                    if info then
+                        totalCount = totalCount + (info.stackCount or 1)
+                    end
                 end
             end
         end
@@ -664,8 +688,8 @@ function Menus:RefreshFoodOrbitCount()
     btn.countText:SetText(totalCount > 1 and tostring(totalCount) or "")
 end
 
-function Menus:RefreshFoodPicker()
-    local foods = Quiver.Modules.Pet:GetSuitableFood()
+function Menus:RefreshFoodPicker(foods)
+    foods = foods or Quiver.Modules.Pet:GetSuitableFood()
     for i, b in ipairs(foodPickerButtons) do
         local food = foods[i]
         if food then
@@ -715,7 +739,7 @@ function Menus:RefreshFoodPicker()
 end
 
 function Menus:UpdateFoodOrbitButton()
-    local btn = _G["QuiverBtn_food"]
+    local btn = Menus._foodOrbitBtn
     if not btn or InCombatLockdown() then return end
     if not Quiver.Modules.Pet.exists then
         btn:SetAlpha(0.4)
@@ -736,23 +760,23 @@ function Menus:RebuildFoodPicker()
         self:UpdateFoodOrbitButton()
         return
     end
-    local anchor = _G["QuiverBtn_food"]
+    local anchor = Menus._foodOrbitBtn
     if not anchor then return end
     for i, b in ipairs(foodPickerButtons) do
         b:ClearAllPoints()
         b:SetPoint("LEFT", anchor, "RIGHT", 6 + (i - 1) * BUTTON_SPACING, 0)
     end
-    self:RefreshFoodPicker()
+    local foods = Quiver.Modules.Pet:GetSuitableFood()
+    self:RefreshFoodPicker(foods)
 
     -- Restore orbit button state from saved selection — update icon/macro/tooltip
     -- directly; never call SelectFood here (that closes the picker as a side effect).
     local fs = Quiver.db and Quiver.db.char.menuSelections.food
     local savedName = fs and fs.name
-    local btn = _G["QuiverBtn_food"]
+    local btn = Menus._foodOrbitBtn
     if not btn or InCombatLockdown() then return end
 
     if savedName then
-        local foods = Quiver.Modules.Pet:GetSuitableFood()
         local foundFood = nil
         for _, food in ipairs(foods) do
             if food.name == savedName then foundFood = food; break end
@@ -778,10 +802,11 @@ function Menus:RebuildFoodPicker()
         btn:SetAttribute("type2", "macro")
         btn:SetAttribute("macrotext2", macro)
         local verb = isPetBuff and "Right-click: use " or "Right-click: feed "
+        local actionLine = verb .. savedName
         btn:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine("Feed Pet")
-            GameTooltip:AddLine(verb .. savedName, 0.4, 1, 0.4)
+            GameTooltip:AddLine(actionLine, 0.4, 1, 0.4)
             GameTooltip:AddLine("Left-click: open food picker", 0.6, 0.6, 0.6)
             GameTooltip:Show()
         end)
@@ -805,8 +830,8 @@ function Menus:ToggleFoodPicker()
     if foodPickerOpen then
         self:HideFoodPicker()
     else
-        self:RefreshFoodPicker()
         local foods = Quiver.Modules.Pet:GetSuitableFood()
+        self:RefreshFoodPicker(foods)
         for i, b in ipairs(foodPickerButtons) do
             local hasFood = foods[i] ~= nil
             b:SetAlpha(hasFood and 1 or 0)
@@ -818,21 +843,23 @@ end
 
 -- ── Menu definitions ──────────────────────────────────────────────────────────
 
-local function NewMenu(btnName, growLeft, entries)
+local function NewMenu(btnName, displayName, growLeft, entries)
     local pool = {}
     for i = 1, #entries do pool[i] = CreateBlankButton() end
     return {
-        triggerName = btnName,
-        growLeft    = growLeft,
-        entries     = entries,
-        buttons     = {},
-        pool        = pool,
+        triggerName   = btnName,
+        displayName   = displayName,
+        growLeft      = growLeft,
+        entries       = entries,
+        buttons       = {},
+        pool          = pool,
+        _lastSelected = UNSET_SELECTION,
     }
 end
 
 function Menus:Initialize()
     self.menus = {
-        aspects = NewMenu("QuiverBtn_aspects", false, (function()
+        aspects = NewMenu("QuiverBtn_aspects", "Aspects", false, (function()
             local t = {}
             for _, a in ipairs(Quiver.Modules.Aspects.ASPECTS) do
                 local name = a.name
@@ -841,7 +868,7 @@ function Menus:Initialize()
             return t
         end)()),
 
-        pet = NewMenu("QuiverBtn_pet", false, {
+        pet = NewMenu("QuiverBtn_pet", "Pet", false, {
             { spell = "Call Pet",       label = "Call"    },
             { spell = "Dismiss Pet",    label = "Dismiss" },
             { spell = "Revive Pet",     label = "Revive"  },
@@ -849,7 +876,7 @@ function Menus:Initialize()
             { spell = "Beast Training", label = "Train"   },
         }),
 
-        traps = NewMenu("QuiverBtn_traps", true, (function()
+        traps = NewMenu("QuiverBtn_traps", "Traps", true, (function()
             local t = {}
             for _, trap in ipairs(Quiver.Modules.Traps.TRAPS) do
                 t[#t+1] = { spell = trap.name, label = trap.name:match("^(%S+)"), icon = trap.icon, showCooldown = true }
@@ -857,7 +884,7 @@ function Menus:Initialize()
             return t
         end)()),
 
-        tracking = NewMenu("QuiverBtn_tracking", true, (function()
+        tracking = NewMenu("QuiverBtn_tracking", "Tracking", true, (function()
             local t = {}
             for _, name in ipairs(Quiver.Modules.Tracking.TRACKING_SPELLS) do
                 t[#t+1] = { spell = name, label = name:match("^%S+%s+(%S+)") or name }
@@ -870,9 +897,22 @@ function Menus:Initialize()
 
     self:RebuildAll()
 
-    Quiver:RegisterEvent("SPELLS_CHANGED", function() Menus:RebuildAll() end)
+    local rebuildPending = false
+    Quiver:RegisterEvent("SPELLS_CHANGED", function()
+        if InCombatLockdown() then
+            -- Defer: secure attributes can't be written mid-combat anyway.
+            rebuildPending = true
+        else
+            Menus:RebuildAll()
+        end
+    end)
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() Menus:RebuildAll() end)
-    Quiver:RegisterEvent("PLAYER_REGEN_ENABLED", function() Menus:RebuildAll() end)
+    Quiver:RegisterEvent("PLAYER_REGEN_ENABLED", function()
+        if rebuildPending then
+            rebuildPending = false
+            Menus:RebuildAll()
+        end
+    end)
     Quiver:RegisterEvent("BAG_UPDATE_DELAYED", function()
         if foodPickerOpen then
             Menus:RefreshFoodPicker()
@@ -881,4 +921,7 @@ function Menus:Initialize()
         end
     end)
 
+    -- Cache trigger button frame references; used in hot paths to avoid _G lookups.
+    Menus._trapsTriggerBtn = _G["QuiverBtn_traps"]
+    Menus._foodOrbitBtn    = _G["QuiverBtn_food"]
 end

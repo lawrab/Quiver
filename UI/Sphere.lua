@@ -12,6 +12,18 @@ local INDICATOR_SIZE = 12
 local PULSE_COLOR_MANA_LOW  = {0.3,  0.5,  1.0 }
 local PULSE_COLOR_NO_ASPECT = {0.75, 0.08, 0.12}
 
+local function BindingLabel(bType, spell, macro)
+    if bType == "spell" and spell ~= "none" then return spell end
+    if bType == "macro" and (macro or "") ~= "" then
+        return (macro:match("([^\n]+)") or "[Macro]")
+    end
+end
+
+local function HasBinding(bType, spell, macro)
+    if bType == "spell" then return spell ~= "none" end
+    if bType == "macro" then return (macro or "") ~= "" end
+end
+
 function Sphere:Initialize()
     local f = CreateFrame("Button", "QuiverSphere", UIParent, "SecureActionButtonTemplate")
     f:SetWidth(SPHERE_SIZE)
@@ -72,12 +84,6 @@ function Sphere:Initialize()
         local sp     = Quiver.db.profile.sphere
         local lcType = sp.leftType  or "spell"
         local rcType = sp.rightType or "spell"
-        local function BindingLabel(bType, spell, macro)
-            if bType == "spell" and spell ~= "none" then return spell end
-            if bType == "macro" and (macro or "") ~= "" then
-                return (macro:match("([^\n]+)") or "[Macro]")
-            end
-        end
         local lcLabel = BindingLabel(lcType, sp.leftClick,  sp.leftMacro)
         local rcLabel = BindingLabel(rcType, sp.rightClick, sp.rightMacro)
         if lcLabel then GameTooltip:AddLine("Left-click: "  .. lcLabel, 1, 1, 1) end
@@ -95,10 +101,6 @@ function Sphere:Initialize()
             return
         end
         local sp = Quiver.db.profile.sphere
-        local function HasBinding(bType, spell, macro)
-            if bType == "spell" then return spell ~= "none" end
-            if bType == "macro" then return (macro or "") ~= "" end
-        end
         if button == "LeftButton" and not HasBinding(sp.leftType or "spell", sp.leftClick, sp.leftMacro) then
             UIErrorsFrame:AddMessage("Quiver: No left-click action set  \226\128\148  Alt+Right-click to configure", 1, 0.82, 0)
         elseif button == "RightButton" and not HasBinding(sp.rightType or "spell", sp.rightClick, sp.rightMacro) then
@@ -162,6 +164,7 @@ function Sphere:SetupMenuButtons(f)
 
     local BTN_SIZE = 26
     local radius = SPHERE_SIZE / 2 + BTN_SIZE / 2 + 6
+    local keydown = GetCVarBool("ActionButtonUseKeyDown")
     for _, btn in ipairs(buttons) do
         local b = CreateFrame("Button", "QuiverBtn_"..btn.name, f, "SecureActionButtonTemplate")
         b:SetWidth(BTN_SIZE)
@@ -170,7 +173,6 @@ function Sphere:SetupMenuButtons(f)
         b:SetPoint("CENTER", f, "CENTER",
             math.cos(rad) * radius,
             math.sin(rad) * radius)
-        local keydown = GetCVarBool("ActionButtonUseKeyDown")
         b:RegisterForClicks(keydown and "AnyDown" or "AnyUp")
 
         -- Icon from spell, fallback to empty slot; store hint for later restore

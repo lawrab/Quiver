@@ -19,18 +19,31 @@ function Pet:Enable()
     Quiver:RegisterEvent("UNIT_PET", function(_, unit)
         if unit == "player" then self:UpdateState() end
     end)
-    Quiver:RegisterEvent("UNIT_HAPPINESS", function(_, unit)
-        if unit == "pet" then self:UpdateState() end
-    end)
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:UpdateState() end)
     self:UpdateState()
+
+    -- UNIT_HAPPINESS no longer exists in the Anniversary client; poll every
+    -- 5 seconds so the happiness ring stays accurate between pet appearances.
+    local elapsed = 0
+    self.ticker = CreateFrame("Frame")
+    self.ticker:SetScript("OnUpdate", function(_, dt)
+        elapsed = elapsed + dt
+        if elapsed >= 5.0 then
+            elapsed = 0
+            if self.exists then self:UpdateState() end
+        end
+    end)
+end
+
+function Pet:Disable()
+    if self.ticker then self.ticker:Hide() end
 end
 
 function Pet:UpdateState()
     local wasExists = self.exists
     self.exists = UnitExists("pet")
     if self.exists then
-        self.happiness = GetPetHappiness()
+        self.happiness = GetPetHappiness and GetPetHappiness() or nil
     else
         self.happiness = nil
     end
@@ -51,6 +64,14 @@ function Pet:GetHappinessColor()
     return 0.5, 0.5, 0.5
 end
 
+local function FoodSortComparator(a, b)
+    local ap = (a.isPetBuff and 0 or 1)
+    local bp = (b.isPetBuff and 0 or 1)
+    if ap ~= bp then return ap < bp end
+    if a.itemLevel ~= b.itemLevel then return a.itemLevel > b.itemLevel end
+    return a.name < b.name
+end
+
 function Pet:GetSuitableFood()
     if not self.exists then return {} end
 
@@ -65,12 +86,15 @@ function Pet:GetSuitableFood()
     local byName = {}
     for bag = 0, 4 do
         for slot = 1, C_Container.GetContainerNumSlots(bag) do
-            local info = C_Container.GetContainerItemInfo(bag, slot)
-            if info and info.itemID then
-                local isPetBuff = petBuffIDs[info.itemID] == true
-                if isPetBuff or db:IsPetFood(info.itemID, foodTypes) then
-                    local name, _, _, itemLevel, _, _, _, _, _, itemIcon = GetItemInfo(info.itemID)
-                    if name then
+            -- Cheap ID-only check first; avoids allocating a GetContainerItemInfo
+            -- table for every non-food slot (typically 80–100 per bag scan).
+            local itemID = C_Container.GetContainerItemID(bag, slot)
+            if itemID then
+                local isPetBuff = petBuffIDs[itemID] == true
+                if isPetBuff or db:IsPetFood(itemID, foodTypes) then
+                    local info = C_Container.GetContainerItemInfo(bag, slot)
+                    local name, _, _, itemLevel, _, _, _, _, _, itemIcon = GetItemInfo(itemID)
+                    if info and name then
                         if byName[name] then
                             byName[name].count = byName[name].count + (info.stackCount or 1)
                         else
@@ -84,7 +108,7 @@ function Pet:GetSuitableFood()
                                 itemLevel = itemLevel or 0,
                                 count     = info.stackCount or 1,
                                 icon      = icon,
-                                itemID    = info.itemID,
+                                itemID    = itemID,
                                 isPetBuff = isPetBuff,
                             }
                         end
@@ -98,13 +122,7 @@ function Pet:GetSuitableFood()
     for _, food in pairs(byName) do sorted[#sorted+1] = food end
     -- Pet-buff treats first (direct-use items that buff pet stats), then by item level desc,
     -- then alphabetically as a stable tiebreaker so order never shuffles.
-    table.sort(sorted, function(a, b)
-        local ap = (a.isPetBuff and 0 or 1)
-        local bp = (b.isPetBuff and 0 or 1)
-        if ap ~= bp then return ap < bp end
-        if a.itemLevel ~= b.itemLevel then return a.itemLevel > b.itemLevel end
-        return a.name < b.name
-    end)
+    table.sort(sorted, FoodSortComparator)
 
     local result = {}
     for i = 1, math.min(5, #sorted) do result[i] = sorted[i] end

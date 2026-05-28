@@ -4,9 +4,6 @@ local Ammo = {}
 Quiver.Modules = Quiver.Modules or {}
 Quiver.Modules.Ammo = Ammo
 
--- Ammo is stored in the ammo slot (slot 0 in the quiver/ammo bag)
-local AMMO_SLOT = 0
-
 function Ammo:Initialize()
     self.count = 0
     self.itemName = nil
@@ -14,7 +11,7 @@ function Ammo:Initialize()
 end
 
 function Ammo:Enable()
-    Quiver:RegisterEvent("BAG_UPDATE", function() self:UpdateCount() end)
+    Quiver:RegisterEvent("BAG_UPDATE_DELAYED", function() self:UpdateCount() end)
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:UpdateCount() end)
     self:UpdateCount()
 end
