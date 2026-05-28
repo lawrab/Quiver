@@ -28,28 +28,13 @@ end
 
 function Aspects:Enable()
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:DetectCurrentAspect() end)
-    self:DetectCurrentAspect()
-    Quiver:RegisterEvent("UNIT_AURA", function(_, unit, updateInfo)
-        if unit ~= "player" then return end
-        -- updateInfo is nil on older Classic clients; fall through to full scan.
-        if updateInfo and not updateInfo.isFullUpdate then
-            local relevant = false
-            if updateInfo.addedAuras then
-                for _, aura in ipairs(updateInfo.addedAuras) do
-                    if ASPECTS_BY_NAME[aura.name] then relevant = true; break end
-                end
-            end
-            if not relevant and self.current and updateInfo.removedAuraInstanceIDs then
-                relevant = #updateInfo.removedAuraInstanceIDs > 0
-            end
-            if not relevant then return end
-        end
-        self:DetectCurrentAspect()
+    Quiver:RegisterEvent("UNIT_AURA", function(_, unit)
+        if unit == "player" then self:DetectCurrentAspect() end
     end)
+    self:DetectCurrentAspect()
 end
 
 function Aspects:DetectCurrentAspect()
-    local prev = self.current
     self.current = nil
     local i = 1
     while true do
@@ -62,9 +47,7 @@ function Aspects:DetectCurrentAspect()
         end
         i = i + 1
     end
-    if self.current ~= prev then
-        Quiver.UI.Sphere:UpdateColor()
-    end
+    Quiver.UI.Sphere:UpdateColor()
 end
 
 function Aspects:GetCurrentColor()
