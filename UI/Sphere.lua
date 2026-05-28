@@ -135,8 +135,20 @@ function Sphere:Initialize()
     barFill:SetPoint("LEFT", barBg, "LEFT", 0, 0)
     barFill:SetHeight(6)
     barFill:SetWidth(0)
+    local capL = barBg:CreateTexture(nil, "OVERLAY")
+    capL:SetTexture(1, 1, 1, 1)
+    capL:SetVertexColor(BAR_COLOR_NORMAL[1], BAR_COLOR_NORMAL[2], BAR_COLOR_NORMAL[3], 0.9)
+    capL:SetSize(2, 10)
+    capL:SetPoint("LEFT", barBg, "LEFT", 0, 0)
+    local capR = barBg:CreateTexture(nil, "OVERLAY")
+    capR:SetTexture(1, 1, 1, 1)
+    capR:SetVertexColor(BAR_COLOR_NORMAL[1], BAR_COLOR_NORMAL[2], BAR_COLOR_NORMAL[3], 0.9)
+    capR:SetSize(2, 10)
+    capR:SetPoint("RIGHT", barBg, "RIGHT", 0, 0)
     self.autoShotBar   = barBg
     self.autoShotFill  = barFill
+    self.autoShotCapL  = capL
+    self.autoShotCapR  = capR
     barBg:Hide()
     _autoShotMod = Quiver.Modules.AutoShot
 
@@ -400,6 +412,8 @@ function Sphere:UpdateAutoShotBarColor(boosted)
     if not self.autoShotFill then return end
     local c = boosted and BAR_COLOR_HASTE or BAR_COLOR_NORMAL
     self.autoShotFill:SetVertexColor(c[1], c[2], c[3], 1)
+    self.autoShotCapL:SetVertexColor(c[1], c[2], c[3], 0.9)
+    self.autoShotCapR:SetVertexColor(c[1], c[2], c[3], 0.9)
 end
 
 function Sphere:_UpdateAutoShotBar(dt)

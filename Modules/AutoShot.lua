@@ -5,17 +5,30 @@ local AutoShot = {}
 Quiver.Modules = Quiver.Modules or {}
 Quiver.Modules.AutoShot = AutoShot
 
-local AUTO_CAST_WINDOW = 0.5  -- seconds Aimed Shot clips timer to
+local AUTO_CAST_WINDOW  = 0.5   -- seconds Aimed Shot clips timer to
+local HASTE_CHECK_DELAY = 0.25  -- seconds between haste-buff polls while shooting
+local HASTE_BUFFS = { ["Rapid Fire"] = true, ["Quick Shots"] = true }
+
+local function HasHasteBuff()
+    local i = 1
+    while true do
+        local name = UnitBuff("player", i)
+        if not name then return false end
+        if HASTE_BUFFS[name] then return true end
+        i = i + 1
+    end
+end
 
 function AutoShot:Initialize()
-    self.speed        = 0
-    self.shotTimer    = 0
-    self.shooting     = false
-    self.casting      = false
-    self.moving       = false
-    self.inCombat     = false
-    self.hasTarget    = false
-    self.speedBoosted = false
+    self.speed            = 0
+    self.shotTimer        = 0
+    self.hasteCheckTimer  = 0
+    self.shooting         = false
+    self.casting          = false
+    self.moving           = false
+    self.inCombat         = false
+    self.hasTarget        = false
+    self.speedBoosted     = false
 end
 
 function AutoShot:Enable()
@@ -59,12 +72,14 @@ end
 
 function AutoShot:OnEvent(event, unit, spellID)
     if event == "START_AUTOREPEAT_SPELL" then
-        self.shooting     = true
-        self.speedBoosted = false
-        local speed       = UnitRangedDamage("player")
-        self.speed        = speed or 0
-        self.shotTimer    = self.speed
-        Quiver.UI.Sphere:UpdateAutoShotBarColor(false)
+        self.shooting        = true
+        self.hasteCheckTimer = 0
+        local speed          = UnitRangedDamage("player")
+        self.speed           = speed or 0
+        self.shotTimer       = self.speed
+        local boosted        = HasHasteBuff()
+        self.speedBoosted    = boosted
+        Quiver.UI.Sphere:UpdateAutoShotBarColor(boosted)
         Quiver.UI.Sphere:UpdateAutoShotBar()
 
     elseif event == "STOP_AUTOREPEAT_SPELL" then
@@ -79,15 +94,11 @@ function AutoShot:OnEvent(event, unit, spellID)
         self.moving = false
 
     elseif event == "UNIT_ATTACK_SPEED" then
+        -- Rescale the in-flight timer when ranged speed changes (weapon swap, haste, etc.)
         if unit ~= "player" then return end
         local newSpeed = UnitRangedDamage("player")
-        if newSpeed and newSpeed > 0 and self.speed > 0 then
+        if newSpeed and newSpeed > 0 and self.speed > 0 and newSpeed ~= self.speed then
             self.shotTimer = self.shotTimer * (newSpeed / self.speed)
-            local boosted = newSpeed < self.speed * 0.99
-            if boosted ~= self.speedBoosted then
-                self.speedBoosted = boosted
-                Quiver.UI.Sphere:UpdateAutoShotBarColor(boosted)
-            end
         end
         self.speed = newSpeed or self.speed
 
@@ -133,17 +144,27 @@ function AutoShot:OnEvent(event, unit, spellID)
         self.speed        = speed or 0
         self.shotTimer    = self.speed
         self.moving       = false
-        self.speedBoosted = false
         self.inCombat     = UnitAffectingCombat("player") and true or false
         self.hasTarget    = UnitExists("target") and true or false
-        Quiver.UI.Sphere:UpdateAutoShotBarColor(false)
+        local boosted     = HasHasteBuff()
+        self.speedBoosted = boosted
+        Quiver.UI.Sphere:UpdateAutoShotBarColor(boosted)
         Quiver.UI.Sphere:UpdateAutoShotBar()
     end
 end
 
 function AutoShot:Tick(dt)
     if not self.shooting or self.moving then return end
-    self.shotTimer = math.max(0, self.shotTimer - dt)
+    self.shotTimer       = math.max(0, self.shotTimer - dt)
+    self.hasteCheckTimer = self.hasteCheckTimer + dt
+    if self.hasteCheckTimer >= HASTE_CHECK_DELAY then
+        self.hasteCheckTimer = 0
+        local boosted = HasHasteBuff()
+        if boosted ~= self.speedBoosted then
+            self.speedBoosted = boosted
+            Quiver.UI.Sphere:UpdateAutoShotBarColor(boosted)
+        end
+    end
 end
 
 function AutoShot:GetProgress()
