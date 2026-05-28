@@ -6,6 +6,7 @@ Quiver.UI = Quiver.UI or {}
 Quiver.UI.Sphere = Sphere
 
 local SPHERE_SIZE = 80
+local BAR_WIDTH   = 102  -- spans traps (210°) to food (330°) button centers
 local _autoShotMod  -- cached after Initialize; avoids global chain lookup every frame
 local INDICATOR_SIZE = 12
 
@@ -122,9 +123,9 @@ function Sphere:Initialize()
 
     -- Auto-shot bar below the sphere
     local barBg = CreateFrame("Frame", nil, UIParent)
-    barBg:SetWidth(SPHERE_SIZE)
+    barBg:SetWidth(BAR_WIDTH)
     barBg:SetHeight(6)
-    barBg:SetPoint("TOP", f, "BOTTOM", 0, -4)
+    barBg:SetPoint("TOP", f, "BOTTOM", 0, -8)
     local barBgTex = barBg:CreateTexture(nil, "BACKGROUND")
     barBgTex:SetAllPoints(barBg)
     barBgTex:SetTexture(0.1, 0.1, 0.1, 0.7)
@@ -406,7 +407,7 @@ function Sphere:_UpdateAutoShotBar(dt)
     _autoShotMod:Tick(dt)
     if not self.autoShotBar:IsShown() then return end
     local progress = _autoShotMod:GetProgress()
-    local w = SPHERE_SIZE * progress
+    local w = BAR_WIDTH * progress
     if w < 0 then w = 0 end
     self.autoShotFill:SetWidth(w)
 end
