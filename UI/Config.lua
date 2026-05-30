@@ -18,7 +18,8 @@ local CONTENT_H = ROWS * ITEM_H
 local SECTION_H = HDR_H + TABS_H + CONTENT_H
 local GAP       = 12
 local PANEL_W   = COL_W + PADDING * 2
-local PANEL_H   = 46 + SECTION_H + GAP + SECTION_H + 46
+local NOTIFY_H  = 28
+local PANEL_H   = 46 + SECTION_H + GAP + SECTION_H + GAP + NOTIFY_H + 46
 
 local function GetSpellEntries()
     local entries = {{ id = "none", label = "None" }}
@@ -302,6 +303,15 @@ local function Build()
     rcSection:SetPoint("TOPLEFT", lcSection, "BOTTOMLEFT", 0, -GAP)
     f.rcSection = rcSection
 
+    local notifyCheck = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
+    notifyCheck:SetSize(24, 24)
+    notifyCheck:SetPoint("TOPLEFT", rcSection, "BOTTOMLEFT", -2, -GAP)
+    notifyCheck.text:SetText("Notify in chat when pet dies")
+    notifyCheck:SetScript("OnClick", function(self)
+        Quiver.db.profile.notifications.petDied = self:GetChecked()
+    end)
+    f.notifyCheck = notifyCheck
+
     local applyBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     applyBtn:SetWidth(80)
     applyBtn:SetHeight(22)
@@ -346,5 +356,6 @@ function Config:Toggle()
     local sp      = Quiver.db.profile.sphere
     panel.lcSection:Refresh(entries, sp.leftType  or "spell", sp.leftClick,  sp.leftMacro  or "")
     panel.rcSection:Refresh(entries, sp.rightType or "spell", sp.rightClick, sp.rightMacro or "")
+    panel.notifyCheck:SetChecked(Quiver.db.profile.notifications.petDied)
     panel:Show()
 end

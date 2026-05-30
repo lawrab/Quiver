@@ -24,6 +24,9 @@ Quiver.defaults = {
             killCommand = true,
             bestialWrath = true,
         },
+        notifications = {
+            petDied = true,
+        },
     },
     char = {
         menuSelections = {},

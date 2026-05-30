@@ -75,13 +75,20 @@ function Sphere:Initialize()
     f:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine("Quiver", 1, 0.82, 0)
-        local sp     = Quiver.db.profile.sphere
-        local lcType = sp.leftType  or "spell"
-        local rcType = sp.rightType or "spell"
-        local lcLabel = BindingLabel(lcType, sp.leftClick,  sp.leftMacro)
-        local rcLabel = BindingLabel(rcType, sp.rightClick, sp.rightMacro)
-        if lcLabel then GameTooltip:AddLine("Left-click: "  .. lcLabel, 1, 1, 1) end
-        if rcLabel then GameTooltip:AddLine("Right-click: " .. rcLabel, 1, 1, 1) end
+        local pet = Quiver.Modules.Pet
+        if pet.dead then
+            GameTooltip:AddLine("Right-click: Revive Pet", 1, 0.3, 0.3)
+        elseif not pet.exists and GetSpellInfo("Call Pet") then
+            GameTooltip:AddLine("Right-click: Call Pet", 0.8, 1.0, 0.4)
+        else
+            local sp     = Quiver.db.profile.sphere
+            local lcType = sp.leftType  or "spell"
+            local rcType = sp.rightType or "spell"
+            local lcLabel = BindingLabel(lcType, sp.leftClick,  sp.leftMacro)
+            local rcLabel = BindingLabel(rcType, sp.rightClick, sp.rightMacro)
+            if lcLabel then GameTooltip:AddLine("Left-click: "  .. lcLabel, 1, 1, 1) end
+            if rcLabel then GameTooltip:AddLine("Right-click: " .. rcLabel, 1, 1, 1) end
+        end
         GameTooltip:AddLine("Middle-click: Drag", 0.6, 0.6, 0.6)
         GameTooltip:AddLine("Alt+Right-click: Settings", 0.6, 0.6, 0.6)
         GameTooltip:Show()
@@ -98,7 +105,10 @@ function Sphere:Initialize()
         if button == "LeftButton" and not HasBinding(sp.leftType or "spell", sp.leftClick, sp.leftMacro) then
             UIErrorsFrame:AddMessage("Quiver: No left-click action set  \226\128\148  Alt+Right-click to configure", 1, 0.82, 0)
         elseif button == "RightButton" and not HasBinding(sp.rightType or "spell", sp.rightClick, sp.rightMacro) then
-            UIErrorsFrame:AddMessage("Quiver: No right-click action set  \226\128\148  Alt+Right-click to configure", 1, 0.82, 0)
+            local pet = Quiver.Modules.Pet
+            if pet.exists and not pet.dead then
+                UIErrorsFrame:AddMessage("Quiver: No right-click action set  \226\128\148  Alt+Right-click to configure", 1, 0.82, 0)
+            end
         end
     end)
 
@@ -158,6 +168,7 @@ function Sphere:Initialize()
         Sphere:_UpdatePulse()
         Sphere:_UpdateRipple(dt)
         Sphere:_UpdateAutoShotBar(dt)
+        Sphere:_UpdatePetRingPulse()
     end)
     self.ticker = ticker
 end
@@ -310,14 +321,36 @@ function Sphere:UpdateOnClick()
         f:SetAttribute("macrotext", sp.leftMacro)
     end
 
-    if rcType == "spell" and rc ~= "none" then
-        f:SetAttribute("macrotext2", "/cast " .. rc)
+    local petRevive = GetSpellInfo("Revive Pet")
+    local petCall   = GetSpellInfo("Call Pet")
+
+    if petCall then
+        -- Bake pet emergency into the macro so conditions evaluate at click-time.
+        -- This works inside combat lockdown because WoW tests conditionals when the
+        -- button is pressed, not when SetAttribute was last called.
+        local lines = {}
+        if petRevive then
+            lines[#lines+1] = "/cast [@pet,dead] Revive Pet"
+        end
+        lines[#lines+1] = "/cast [nopet] Call Pet"
+        if rcType == "spell" and rc ~= "none" then
+            lines[#lines+1] = "/cast [pet,nodead] " .. rc
+        elseif rcType == "macro" and (sp.rightMacro or "") ~= "" then
+            lines[#lines+1] = sp.rightMacro
+        end
+        f:SetAttribute("macrotext2", table.concat(lines, "\n"))
         f:SetAttribute("alt-type2", "macro")
         f:SetAttribute("alt-macrotext2", "")
-    elseif rcType == "macro" and (sp.rightMacro or "") ~= "" then
-        f:SetAttribute("macrotext2", sp.rightMacro)
-        f:SetAttribute("alt-type2", "macro")
-        f:SetAttribute("alt-macrotext2", "")
+    else
+        if rcType == "spell" and rc ~= "none" then
+            f:SetAttribute("macrotext2", "/cast " .. rc)
+            f:SetAttribute("alt-type2", "macro")
+            f:SetAttribute("alt-macrotext2", "")
+        elseif rcType == "macro" and (sp.rightMacro or "") ~= "" then
+            f:SetAttribute("macrotext2", sp.rightMacro)
+            f:SetAttribute("alt-type2", "macro")
+            f:SetAttribute("alt-macrotext2", "")
+        end
     end
 end
 
@@ -374,13 +407,26 @@ function Sphere:FlashAmmoWarning()
 end
 
 function Sphere:UpdatePetIndicator()
-    if self.petRing then
-        if Quiver.Modules.Pet.exists then
-            local r, g, b = Quiver.Modules.Pet:GetHappinessColor()
-            self.petRing:SetVertexColor(r, g, b, 0.85)
-        else
-            self.petRing:SetVertexColor(0, 0, 0, 0)
-        end
+    if not self.petRing then return end
+    local pet = Quiver.Modules.Pet
+    if pet.exists and not pet.dead then
+        local r, g, b = pet:GetHappinessColor()
+        self.petRing:SetVertexColor(r, g, b, 0.85)
+    end
+    -- Dead and no-pet pulse states are driven each frame by _UpdatePetRingPulse.
+end
+
+function Sphere:_UpdatePetRingPulse()
+    if not self.petRing then return end
+    local pet = Quiver.Modules.Pet
+    if pet.dead then
+        local alpha = (math.sin(GetTime() * math.pi * 1.5) + 1) / 2 * 0.85
+        self.petRing:SetVertexColor(0.9, 0.1, 0.1, alpha)
+    elseif not pet.exists and GetSpellInfo("Call Pet") then
+        local alpha = (math.sin(GetTime() * math.pi * 0.8) + 1) / 2 * 0.5
+        self.petRing:SetVertexColor(0.8, 0.4, 0.0, alpha)
+    elseif not pet.exists then
+        self.petRing:SetVertexColor(0, 0, 0, 0)
     end
 end
 

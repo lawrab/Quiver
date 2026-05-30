@@ -12,7 +12,8 @@ local HAPPINESS_COLORS = {
 
 function Pet:Initialize()
     self.happiness = nil
-    self.exists = false
+    self.exists    = false
+    self.dead      = false
 end
 
 function Pet:Enable()
@@ -21,6 +22,23 @@ function Pet:Enable()
     end)
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:UpdateState() end)
     self:UpdateState()
+
+    -- Raw frame for events that would collide with other AceEvent registrations
+    -- on the Quiver object (AceEvent keys by object+event; two modules registering
+    -- the same event silently overwrites the earlier handler).
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("UNIT_HEALTH")
+    f:RegisterEvent("PLAYER_REGEN_ENABLED")
+    f:SetScript("OnEvent", function(_, event, unit)
+        if event == "UNIT_HEALTH" then
+            if unit == "pet" then self:UpdateState() end
+        elseif event == "PLAYER_REGEN_ENABLED" then
+            -- Pet may have died mid-combat; refresh sphere right-click now that
+            -- secure attributes can be written again.
+            Quiver.UI.Sphere:UpdateOnClick()
+        end
+    end)
+    self._eventFrame = f
 
     -- UNIT_HAPPINESS no longer exists in the Anniversary client; poll every
     -- 5 seconds so the happiness ring stays accurate between pet appearances.
@@ -37,19 +55,33 @@ end
 
 function Pet:Disable()
     if self.ticker then self.ticker:Hide() end
+    if self._eventFrame then
+        self._eventFrame:UnregisterAllEvents()
+        self._eventFrame:SetScript("OnEvent", nil)
+    end
 end
 
 function Pet:UpdateState()
     local wasExists = self.exists
+    local wasDead   = self.dead
     self.exists = UnitExists("pet")
     if self.exists then
         self.happiness = GetPetHappiness and GetPetHappiness() or nil
+        self.dead      = UnitIsDead("pet") == true
     else
         self.happiness = nil
+        self.dead      = false
     end
     Quiver.UI.Sphere:UpdatePetIndicator()
     if self.exists ~= wasExists then
         Quiver.UI.Menus:RebuildFoodPicker()
+    end
+    if self.exists ~= wasExists or self.dead ~= wasDead then
+        Quiver.UI.Sphere:UpdateOnClick()
+    end
+
+    if self.dead and not wasDead and Quiver.db.profile.notifications.petDied then
+        print("|cffffcc00Quiver:|r Your pet died \226\128\148 right-click the sphere to revive.")
     end
 
     if self.happiness == 1 and Quiver.db.profile.sounds.petUnhappy then
