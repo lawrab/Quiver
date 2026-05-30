@@ -84,6 +84,12 @@ function Aspects:DetectCurrentAspect()
     end
 
     Quiver.UI.Sphere:UpdateColor()
+
+    -- Keep the aspects orbit-button right-click macro in sync with current state
+    -- so right-click always targets the aspect you're NOT currently in.
+    if not InCombatLockdown() and Quiver.UI.Menus and Quiver.UI.Menus.menus then
+        Quiver.UI.Menus:ApplySelectionToTrigger(Quiver.UI.Menus.menus.aspects)
+    end
 end
 
 function Aspects:GetCurrentColor()

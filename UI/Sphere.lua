@@ -208,6 +208,16 @@ function Sphere:SetupMenuButtons(f)
         b:SetPushedTexture(icon or "Interface\\Buttons\\UI-Quickslot-Depress")
         b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
 
+        if btn.name == "aspects" then
+            -- Small corner badge showing the swap-target aspect icon.
+            -- Visible at a glance once two aspects are selected.
+            local badge = b:CreateTexture(nil, "OVERLAY")
+            badge:SetSize(14, 14)
+            badge:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 3, -3)
+            badge:Hide()
+            b.swapBadge = badge
+        end
+
         if btn.name == "food" then
             local countText = b:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
             countText:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 2, 2)

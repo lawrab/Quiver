@@ -159,23 +159,37 @@ local function UpdateTriggerReadiness(menu)
     -- Only rebind scripts when the selection actually changes; SetScript allocates
     -- a closure every call so skipping identical-state rebinds reduces GC pressure.
     local nowSelected = menu.selected
-    if nowSelected == menu._lastSelected then
+    local nowOther    = menu.otherSelected
+    if nowSelected == menu._lastSelected and nowOther == menu._lastOtherSelected then
         -- alpha may still need syncing even without a script change
         triggerBtn:SetAlpha(nowSelected and 1.0 or 0.6)
         return
     end
-    menu._lastSelected = nowSelected
+    menu._lastSelected      = nowSelected
+    menu._lastOtherSelected = nowOther
 
     local section = menu.displayName
     if nowSelected then
         triggerBtn:SetAlpha(1.0)
         local spellName = nowSelected.spell or ""
-        local rightClickLine = "Right-click: " .. spellName
+        local rightClickLine
+        local swapTip
+        if nowOther and nowOther.spell then
+            local selShort   = spellName:match("of the (.+)") or spellName
+            local otherShort = nowOther.spell:match("of the (.+)") or nowOther.spell
+            rightClickLine = "Right-click: " .. selShort .. " / " .. otherShort .. " (swap)"
+        else
+            rightClickLine = "Right-click: " .. spellName
+            if menu.triggerName == "QuiverBtn_aspects" then
+                swapTip = "Select a 2nd aspect to enable quick-swap"
+            end
+        end
         triggerBtn:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(section)
             GameTooltip:AddLine("Left-click: open menu", 0.6, 0.6, 0.6)
             GameTooltip:AddLine(rightClickLine, 0.4, 1, 0.4)
+            if swapTip then GameTooltip:AddLine(swapTip, 0.7, 0.7, 0.3) end
             GameTooltip:Show()
         end)
     else
@@ -329,7 +343,8 @@ local function PopulateMenu(menu)
         end
         b:Show()
         b:SetAlpha(0)
-        if b.blocker then b.blocker:Show() end
+        b:SetFrameStrata("MEDIUM")
+        if b.blocker then b.blocker:Hide() end
     end
 
     if #menu.buttons == 0 then
@@ -361,6 +376,27 @@ local function PopulateMenu(menu)
         -- Validate stored selection — spell may have become unknown
         if menu.selected and menu.selected.spell and not IsSpellKnown(menu.selected.spell) then
             menu.selected = nil
+        end
+
+        -- Restore the aspects swap slot from saved state
+        if menu.triggerName == "QuiverBtn_aspects" then
+            if not menu.otherSelected then
+                local menuName = menu.triggerName:match("QuiverBtn_(.+)")
+                local savedOther = menuName and Quiver.db.char.menuSelections[menuName .. "_other"]
+                if savedOther then
+                    for _, entry in ipairs(menu.entries) do
+                        if entry.spell == savedOther then
+                            menu.otherSelected = entry
+                            break
+                        end
+                    end
+                end
+            end
+            if menu.otherSelected and menu.otherSelected.spell and not IsSpellKnown(menu.otherSelected.spell) then
+                menu.otherSelected = nil
+                local menuName = menu.triggerName:match("QuiverBtn_(.+)")
+                if menuName then Quiver.db.char.menuSelections[menuName .. "_other"] = nil end
+            end
         end
 
         -- Icon: prefer active selection, else fall back to hint
@@ -423,18 +459,68 @@ function Menus:ApplySelectionToTrigger(menu)
         local castTarget = spellId or entry.spell
         local name = type(castTarget) == "number" and GetSpellInfo(castTarget) or castTarget
         if name then
+            local macro
+            if menu.triggerName == "QuiverBtn_aspects" and menu.otherSelected then
+                local otherId   = menu.otherSelected.spell and GetSpellId(menu.otherSelected.spell)
+                local otherCast = otherId or menu.otherSelected.spell
+                local otherName = type(otherCast) == "number" and GetSpellInfo(otherCast) or otherCast
+                if otherName then
+                    local current = Quiver.Modules.Aspects.current
+                    if current and current.name == name then
+                        -- Already in selected aspect: right-click casts the other one.
+                        macro = "/cast " .. otherName
+                    else
+                        -- Not in selected aspect: right-click restores it.
+                        macro = "/cast " .. name
+                    end
+                    -- Icon tracks the currently active aspect so the button reflects live state.
+                    local iconName = (Quiver.Modules.Aspects.current and Quiver.Modules.Aspects.current.name) or name
+                    local _, _, aspectIcon = GetSpellInfo(iconName)
+                    if aspectIcon then
+                        triggerBtn:SetNormalTexture(aspectIcon)
+                        triggerBtn:SetPushedTexture(aspectIcon)
+                    end
+                    -- Badge: show the swap-target (the aspect right-click will cast next).
+                    local badge = triggerBtn.swapBadge
+                    if badge then
+                        local badgeTarget = (current and current.name == name) and otherName or name
+                        local _, _, badgeIcon = GetSpellInfo(badgeTarget)
+                        if badgeIcon then
+                            badge:SetTexture(badgeIcon)
+                            badge:Show()
+                        end
+                    end
+                else
+                    macro = "/cast " .. name
+                end
+            else
+                macro = "/cast " .. name
+                -- No swap partner: hide the badge.
+                if triggerBtn.swapBadge then triggerBtn.swapBadge:Hide() end
+            end
             triggerBtn:SetAttribute("type2", "macro")
-            triggerBtn:SetAttribute("macrotext2", "/cast " .. name)
+            triggerBtn:SetAttribute("macrotext2", macro)
             return
         end
     end
+    if triggerBtn and triggerBtn.swapBadge then triggerBtn.swapBadge:Hide() end
     triggerBtn:SetAttribute("type2", nil)
     triggerBtn:SetAttribute("macrotext2", nil)
 end
 
 function Menus:SelectEntry(menu, entry)
-    menu.selected = entry
     local menuName = menu.triggerName:match("QuiverBtn_(.+)")
+    -- For the aspects menu: slide the current selection into the "other" swap slot
+    -- when the player picks a different aspect, giving right-click a toggle target.
+    if menu.triggerName == "QuiverBtn_aspects"
+            and menu.selected
+            and menu.selected.spell ~= entry.spell then
+        menu.otherSelected = menu.selected
+        if menuName then
+            Quiver.db.char.menuSelections[menuName .. "_other"] = menu.selected.spell
+        end
+    end
+    menu.selected = entry
     if menuName then
         Quiver.db.char.menuSelections[menuName] = entry.spell
     end
@@ -483,6 +569,7 @@ function Menus:Toggle(menuName)
     if not menu or #menu.buttons == 0 then return end
 
     for _, b in ipairs(menu.buttons) do
+        b:SetFrameStrata("DIALOG")
         b:SetAlpha(1)
         if b.blocker then b.blocker:Hide() end
     end
@@ -497,8 +584,9 @@ end
 function Menus:HideAll()
     for _, menu in pairs(self.menus) do
         for _, b in ipairs(menu.buttons) do
+            b:SetFrameStrata("MEDIUM")
             b:SetAlpha(0)
-            if b.blocker then b.blocker:Show() end
+            if b.blocker then b.blocker:Hide() end
         end
     end
     self:HideFoodPicker()
@@ -911,6 +999,10 @@ function Menus:Initialize()
         if rebuildPending then
             rebuildPending = false
             Menus:RebuildAll()
+        else
+            -- Aspect may have changed mid-combat; refresh the swap macro now that
+            -- we can write secure attributes again.
+            Menus:ApplySelectionToTrigger(Menus.menus.aspects)
         end
     end)
     Quiver:RegisterEvent("BAG_UPDATE", function()
