@@ -107,3 +107,23 @@ read_globals = {
 
 -- Don't lint the vendored Ace3 libraries
 exclude_files = { "Libs/**" }
+
+-- Test files write the WoW API globals that production code only reads.
+-- Promote them to writable for the tests directory.
+files["tests/"] = {
+    globals = {
+        "math", "table", "string", "print", "unpack",
+        "CreateFrame",
+        "UnitExists", "UnitIsDead", "UnitBuff",
+        "GetPetHappiness", "GetPetFoodTypes",
+        "GetSpellInfo", "GetSpellCooldown",
+        "GetShapeshiftForm", "GetShapeshiftFormInfo",
+        "GetTime",
+        "GetInventorySlotInfo", "GetInventoryItemCount", "GetInventoryItemLink",
+        "GetItemInfo",
+        "PlaySound",
+        "GetTrackingTexture",
+        "InCombatLockdown",
+        "wipe",
+    }
+}

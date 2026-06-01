@@ -344,7 +344,10 @@ local function PopulateMenu(menu)
         b:Show()
         b:SetAlpha(0)
         b:SetFrameStrata("MEDIUM")
-        if b.blocker then b.blocker:Show() end
+        if b.blocker then
+            b.blocker:SetFrameStrata("MEDIUM")
+            b.blocker:Show()
+        end
     end
 
     if #menu.buttons == 0 then
@@ -588,7 +591,10 @@ function Menus:HideAll()
         for _, b in ipairs(menu.buttons) do
             b:SetFrameStrata("MEDIUM")
             b:SetAlpha(0)
-            if b.blocker then b.blocker:Show() end
+            if b.blocker then
+                b.blocker:SetFrameStrata("MEDIUM")
+                b.blocker:Show()
+            end
         end
     end
     self:HideFoodPicker()

@@ -29,7 +29,7 @@ describe("Aspects:DetectCurrentAspect", function()
     it("detects aspect via shapeshift form", function()
         stub_spell(13165, "Aspect of the Hawk")
         _G.GetShapeshiftForm     = function() return 1 end
-        _G.GetShapeshiftFormInfo = function(i) return nil, nil, nil, 13165 end
+        _G.GetShapeshiftFormInfo = function(_) return nil, nil, nil, 13165 end
         Aspects:DetectCurrentAspect()
         assert.not_nil(Aspects.current)
         assert.equals("Aspect of the Hawk", Aspects.current.name)
@@ -38,14 +38,14 @@ describe("Aspects:DetectCurrentAspect", function()
     it("falls back to UnitBuff scan when shapeshift returns 0", function()
         local buffs = { "Aspect of the Viper" }
         _G.GetShapeshiftForm = function() return 0 end
-        _G.UnitBuff = function(unit, i) return buffs[i] end
+        _G.UnitBuff = function(_, i) return buffs[i] end
         Aspects:DetectCurrentAspect()
         assert.not_nil(Aspects.current)
         assert.equals("Aspect of the Viper", Aspects.current.name)
     end)
 
     it("ignores unknown buff names in the scan", function()
-        UnitBuff = function(unit, i)
+        _G.UnitBuff = function(_, i)
             if i == 1 then return "Some Other Buff" end
             return nil
         end
@@ -56,7 +56,7 @@ describe("Aspects:DetectCurrentAspect", function()
     it("sets current to nil when shapeshift spell is unrecognised", function()
         stub_spell(99999, "Unknown Shapeshift")
         _G.GetShapeshiftForm     = function() return 1 end
-        _G.GetShapeshiftFormInfo = function(i) return nil, nil, nil, 99999 end
+        _G.GetShapeshiftFormInfo = function(_) return nil, nil, nil, 99999 end
         Aspects:DetectCurrentAspect()
         assert.is_nil(Aspects.current)
     end)

@@ -3,10 +3,6 @@
 
 -- ── Core globals ─────────────────────────────────────────────────────────────
 
-math   = math
-table  = table
-string = string
-print  = print
 unpack = unpack or table.unpack  -- Lua 5.1 vs 5.2+
 
 -- ── Quiver global skeleton ────────────────────────────────────────────────────
@@ -128,11 +124,11 @@ function GetInventorySlotInfo(name)
     return 0
 end
 
-function GetInventoryItemCount(unit, slot)
+function GetInventoryItemCount(_, _)
     return _G._ammoCount
 end
 
-function GetInventoryItemLink(unit, slot)
+function GetInventoryItemLink(_, _)
     return _G._ammoLink
 end
 

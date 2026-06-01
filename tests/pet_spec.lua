@@ -137,21 +137,21 @@ describe("Pet:GetHappinessColor", function()
 
     it("returns red for unhappy (1)", function()
         Pet.happiness = 1
-        local r, g, b = Pet:GetHappinessColor()
+        local r, g = Pet:GetHappinessColor()
         assert.near(1.0, r, 0.01)
         assert.near(0.2, g, 0.01)
     end)
 
     it("returns yellow for content (2)", function()
         Pet.happiness = 2
-        local r, g, b = Pet:GetHappinessColor()
+        local r, g = Pet:GetHappinessColor()
         assert.near(1.0, r, 0.01)
         assert.near(0.8, g, 0.01)
     end)
 
     it("returns green for happy (3)", function()
         Pet.happiness = 3
-        local r, g, b = Pet:GetHappinessColor()
+        local r, g = Pet:GetHappinessColor()
         assert.near(0.2, r, 0.01)
         assert.near(1.0, g, 0.01)
     end)
