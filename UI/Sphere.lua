@@ -8,7 +8,6 @@ Quiver.UI.Sphere = Sphere
 local SPHERE_SIZE = 80
 local BAR_WIDTH   = 102  -- spans traps (210°) to food (330°) button centers
 local _autoShotMod  -- cached after Initialize; avoids global chain lookup every frame
-local INDICATOR_SIZE = 12
 
 -- Pre-allocated color constants — reused every call, never re-created
 local PULSE_COLOR_MANA_LOW  = {0.3,  0.5,  1.0 }
@@ -72,8 +71,8 @@ function Sphere:Initialize()
     self.petRing = petRing
 
 
-    f:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    f:SetScript("OnEnter", function(frame)
+        GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
         GameTooltip:AddLine("Quiver", 1, 0.82, 0)
         local pet = Quiver.Modules.Pet
         if pet.dead then
@@ -95,7 +94,7 @@ function Sphere:Initialize()
     end)
     f:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-    f:SetScript("PostClick", function(self, button)
+    f:SetScript("PostClick", function(_, button)
         Sphere:TriggerClickAnim()
         if button == "RightButton" and IsAltKeyDown() then
             Quiver.UI.Config:Toggle()
@@ -176,14 +175,14 @@ end
 function Sphere:SetupDrag(f)
     f:SetMovable(true)
     f:RegisterForDrag("MiddleButton")
-    f:SetScript("OnDragStart", function(self)
+    f:SetScript("OnDragStart", function(frame)
         if not Quiver.db.profile.sphere.locked then
-            self:StartMoving()
+            frame:StartMoving()
         end
     end)
-    f:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local _, _, _, x, y = self:GetPoint()
+    f:SetScript("OnDragStop", function(frame)
+        frame:StopMovingOrSizing()
+        local _, _, _, x, y = frame:GetPoint()
         Quiver.db.profile.sphere.x = x
         Quiver.db.profile.sphere.y = y
     end)
@@ -262,8 +261,8 @@ function Sphere:SetupMenuButtons(f)
                     Quiver.UI.Menus:HideAll()
                 end
             end)
-            b:SetScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            b:SetScript("OnEnter", function(frame)
+                GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
                 GameTooltip:AddLine("Feed Pet")
                 local happiness = Quiver.Modules.Pet.happiness
                 if happiness == 3 then
@@ -280,8 +279,8 @@ function Sphere:SetupMenuButtons(f)
                     Quiver.UI.Menus:HideAll()
                 end
             end)
-            b:SetScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            b:SetScript("OnEnter", function(frame)
+                GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
                 GameTooltip:AddLine(btn.name:sub(1,1):upper()..btn.name:sub(2))
                 GameTooltip:AddLine("Left-click: open menu", 0.6, 0.6, 0.6)
                 GameTooltip:AddLine("Right-click: cast selected", 0.6, 0.6, 0.6)
@@ -336,6 +335,9 @@ function Sphere:UpdateOnClick()
         if rcType == "spell" and rc ~= "none" then
             lines[#lines+1] = "/cast [pet,nodead] " .. rc
         elseif rcType == "macro" and (sp.rightMacro or "") ~= "" then
+            -- Stop macro execution if pet is dead or missing so the user's
+            -- configured macro doesn't fire alongside Revive/Call Pet.
+            lines[#lines+1] = "/stopmacro [@pet,dead][nopet]"
             lines[#lines+1] = sp.rightMacro
         end
         f:SetAttribute("macrotext2", table.concat(lines, "\n"))

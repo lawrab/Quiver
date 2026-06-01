@@ -86,9 +86,7 @@ function Pet:UpdateState()
         print("|cffffcc00Quiver:|r Your pet died \226\128\148 right-click the sphere to revive.")
     end
 
-    if self.happiness == 1 and Quiver.db.profile.sounds.petUnhappy then
-        -- PlaySoundFile("Interface\\AddOns\\Quiver\\Media\\Sounds\\pet_unhappy.ogg")
-    end
+    -- PlaySoundFile("Interface\\AddOns\\Quiver\\Media\\Sounds\\pet_unhappy.ogg")
 end
 
 function Pet:GetHappinessColor()

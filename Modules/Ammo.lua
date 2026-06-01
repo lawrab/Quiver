@@ -41,10 +41,7 @@ function Ammo:UpdateCount()
 end
 
 function Ammo:OnAmmoLow()
-    if Quiver.db.profile.sounds.ammoLow then
-        -- PlaySoundFile("Interface\\AddOns\\Quiver\\Media\\Sounds\\ammo_low.ogg")
-    end
-    -- Flash the ammo count red on sphere
+    -- PlaySoundFile("Interface\\AddOns\\Quiver\\Media\\Sounds\\ammo_low.ogg")
     Quiver.UI.Sphere:FlashAmmoWarning()
 end
 

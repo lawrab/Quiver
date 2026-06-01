@@ -47,7 +47,7 @@ function AutoShot:Enable()
     f:RegisterEvent("PLAYER_REGEN_ENABLED")
     f:RegisterEvent("PLAYER_TARGET_CHANGED")
     -- payload: (event, unit, castGUID, spellID, ...)
-    f:SetScript("OnEvent", function(_, event, unit, castGUID, spellID)
+    f:SetScript("OnEvent", function(_, event, unit, _, spellID)
         self:OnEvent(event, unit, spellID)
     end)
     self._eventFrame = f

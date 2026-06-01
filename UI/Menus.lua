@@ -344,7 +344,7 @@ local function PopulateMenu(menu)
         b:Show()
         b:SetAlpha(0)
         b:SetFrameStrata("MEDIUM")
-        if b.blocker then b.blocker:Hide() end
+        if b.blocker then b.blocker:Show() end
     end
 
     if #menu.buttons == 0 then
@@ -488,6 +488,8 @@ function Menus:ApplySelectionToTrigger(menu)
                         if badgeIcon then
                             badge:SetTexture(badgeIcon)
                             badge:Show()
+                        else
+                            badge:Hide()
                         end
                     end
                 else
@@ -586,7 +588,7 @@ function Menus:HideAll()
         for _, b in ipairs(menu.buttons) do
             b:SetFrameStrata("MEDIUM")
             b:SetAlpha(0)
-            if b.blocker then b.blocker:Hide() end
+            if b.blocker then b.blocker:Show() end
         end
     end
     self:HideFoodPicker()
@@ -744,8 +746,8 @@ function Menus:SelectFood(food)
         end
         local verb = food.isPetBuff == true and "Right-click: use " or "Right-click: feed "
         local actionLine = verb .. food.name
-        btn:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        btn:SetScript("OnEnter", function(frame)
+            GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
             GameTooltip:AddLine("Feed Pet")
             GameTooltip:AddLine(actionLine, 0.4, 1, 0.4)
             GameTooltip:AddLine("Left-click: open food picker", 0.6, 0.6, 0.6)
@@ -835,8 +837,8 @@ function Menus:UpdateFoodOrbitButton()
         btn:SetAlpha(0.4)
         btn:SetAttribute("macrotext2", "")
         if btn.countText then btn.countText:SetText("") end
-        btn:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        btn:SetScript("OnEnter", function(frame)
+            GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
             GameTooltip:AddLine("Feed Pet")
             GameTooltip:AddLine("No pet active", 0.5, 0.5, 0.5)
             GameTooltip:Show()
@@ -893,8 +895,8 @@ function Menus:RebuildFoodPicker()
         btn:SetAttribute("macrotext2", macro)
         local verb = isPetBuff and "Right-click: use " or "Right-click: feed "
         local actionLine = verb .. savedName
-        btn:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        btn:SetScript("OnEnter", function(frame)
+            GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
             GameTooltip:AddLine("Feed Pet")
             GameTooltip:AddLine(actionLine, 0.4, 1, 0.4)
             GameTooltip:AddLine("Left-click: open food picker", 0.6, 0.6, 0.6)
@@ -905,8 +907,8 @@ function Menus:RebuildFoodPicker()
         SetFoodOrbitIcon(btn, feedIcon or nil)
         btn:SetAlpha(0.6)
         btn:SetAttribute("macrotext2", "")
-        btn:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        btn:SetScript("OnEnter", function(frame)
+            GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
             GameTooltip:AddLine("Feed Pet")
             GameTooltip:AddLine("Right-click: no food selected", 0.5, 0.5, 0.5)
             GameTooltip:AddLine("Left-click: open food picker", 0.6, 0.6, 0.6)
@@ -1004,6 +1006,7 @@ function Menus:Initialize()
         if rebuildPending then
             rebuildPending = false
             Menus:RebuildAll()
+            Quiver.UI.Sphere:UpdateOnClick()
         else
             -- Aspect may have changed mid-combat; refresh the swap macro now that
             -- we can write secure attributes again.
