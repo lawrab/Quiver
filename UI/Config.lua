@@ -19,7 +19,7 @@ local SECTION_H = HDR_H + TABS_H + CONTENT_H
 local GAP       = 12
 local PANEL_W   = COL_W + PADDING * 2
 local NOTIFY_H  = 28
-local PANEL_H   = 46 + SECTION_H + GAP + SECTION_H + GAP + NOTIFY_H + 46
+local PANEL_H   = 46 + SECTION_H + GAP + SECTION_H + GAP + NOTIFY_H * 3 + 46
 
 local function GetSpellEntries()
     local entries = {{ id = "none", label = "None" }}
@@ -312,6 +312,24 @@ local function Build()
     end)
     f.notifyCheck = notifyCheck
 
+    local soundAmmoCheck = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
+    soundAmmoCheck:SetSize(24, 24)
+    soundAmmoCheck:SetPoint("TOPLEFT", notifyCheck, "BOTTOMLEFT", 0, -4)
+    soundAmmoCheck.text:SetText("Sound alert when ammo is low")
+    soundAmmoCheck:SetScript("OnClick", function(self)
+        Quiver.db.profile.sounds.ammoLow = self:GetChecked()
+    end)
+    f.soundAmmoCheck = soundAmmoCheck
+
+    local soundPetCheck = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
+    soundPetCheck:SetSize(24, 24)
+    soundPetCheck:SetPoint("TOPLEFT", soundAmmoCheck, "BOTTOMLEFT", 0, -4)
+    soundPetCheck.text:SetText("Sound alert when pet is unhappy")
+    soundPetCheck:SetScript("OnClick", function(self)
+        Quiver.db.profile.sounds.petUnhappy = self:GetChecked()
+    end)
+    f.soundPetCheck = soundPetCheck
+
     local applyBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     applyBtn:SetWidth(80)
     applyBtn:SetHeight(22)
@@ -357,5 +375,7 @@ function Config:Toggle()
     panel.lcSection:Refresh(entries, sp.leftType  or "spell", sp.leftClick,  sp.leftMacro  or "")
     panel.rcSection:Refresh(entries, sp.rightType or "spell", sp.rightClick, sp.rightMacro or "")
     panel.notifyCheck:SetChecked(Quiver.db.profile.notifications.petDied)
+    panel.soundAmmoCheck:SetChecked(Quiver.db.profile.sounds.ammoLow)
+    panel.soundPetCheck:SetChecked(Quiver.db.profile.sounds.petUnhappy)
     panel:Show()
 end

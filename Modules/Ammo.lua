@@ -41,7 +41,9 @@ function Ammo:UpdateCount()
 end
 
 function Ammo:OnAmmoLow()
-    -- PlaySoundFile("Interface\\AddOns\\Quiver\\Media\\Sounds\\ammo_low.ogg")
+    if Quiver.db.profile.sounds.ammoLow then
+        PlaySound(8959)  -- RAID_WARNING: short urgent bell
+    end
     Quiver.UI.Sphere:FlashAmmoWarning()
 end
 

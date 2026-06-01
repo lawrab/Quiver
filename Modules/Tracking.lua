@@ -29,8 +29,9 @@ function Tracking:Enable()
 end
 
 function Tracking:UpdateTracking()
-    -- GetTrackingTexture returns the icon of the current tracking, or nil
+    -- GetTrackingTexture returns the icon path of the current tracking, or nil
     local texture = GetTrackingTexture()
     self.current = texture
+    Quiver.UI.Sphere:UpdateTrackingIndicator()
 end
 

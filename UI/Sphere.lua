@@ -432,6 +432,22 @@ function Sphere:_UpdatePetRingPulse()
     end
 end
 
+function Sphere:UpdateTrackingIndicator()
+    local btn = _G["QuiverBtn_tracking"]
+    if not btn then return end
+    local current = Quiver.Modules.Tracking.current
+    if current then
+        -- GetTrackingTexture returns a file path string — safe to use directly
+        btn:SetNormalTexture(current)
+        btn:SetPushedTexture(current)
+    else
+        -- No active tracking: restore the hint icon
+        local _, _, hintIcon = GetSpellInfo(btn.spellHint or "Track Beasts")
+        btn:SetNormalTexture(hintIcon or "Interface\\Buttons\\UI-Quickslot2")
+        btn:SetPushedTexture(hintIcon or "Interface\\Buttons\\UI-Quickslot-Depress")
+    end
+end
+
 function Sphere:TriggerClickAnim()
     self.rippleT = 0
 end

@@ -70,7 +70,9 @@ read_globals = {
     "LibStub",
 
     -- Sound
+    "PlaySound",
     "PlaySoundFile",
+    "SOUNDKIT",
 
     -- Spell book
     "GetNumSpellTabs",
