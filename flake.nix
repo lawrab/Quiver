@@ -11,6 +11,7 @@
       devShells.${system}.default = pkgs.mkShell {
         packages = [
           pkgs.lua51Packages.luacheck
+          pkgs.lua51Packages.busted
           pkgs.lua5_1
         ];
       };
