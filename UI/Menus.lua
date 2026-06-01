@@ -830,6 +830,8 @@ function Menus:UpdateFoodOrbitButton()
     local btn = Menus._foodOrbitBtn
     if not btn or InCombatLockdown() then return end
     if not Quiver.Modules.Pet.exists then
+        local _, _, feedIcon = GetSpellInfo("Feed Pet")
+        SetFoodOrbitIcon(btn, feedIcon or nil)
         btn:SetAlpha(0.4)
         btn:SetAttribute("macrotext2", "")
         if btn.countText then btn.countText:SetText("") end
@@ -988,10 +990,13 @@ function Menus:Initialize()
     local rebuildPending = false
     Quiver:RegisterEvent("SPELLS_CHANGED", function()
         if InCombatLockdown() then
-            -- Defer: secure attributes can't be written mid-combat anyway.
             rebuildPending = true
         else
             Menus:RebuildAll()
+            -- Sphere right-click macro depends on GetSpellInfo("Call Pet") which may
+            -- have returned nil if UpdateOnClick ran before SPELLS_CHANGED populated
+            -- the spell book. Rebuild it now that spells are guaranteed available.
+            Quiver.UI.Sphere:UpdateOnClick()
         end
     end)
     Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() Menus:RebuildAll() end)

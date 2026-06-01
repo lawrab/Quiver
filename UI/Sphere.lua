@@ -430,11 +430,6 @@ function Sphere:_UpdatePetRingPulse()
     end
 end
 
-
-function Sphere:UpdateTrackingIndicator()
-    -- TODO: show small tracking icon on sphere edge
-end
-
 function Sphere:TriggerClickAnim()
     self.rippleT = 0
 end

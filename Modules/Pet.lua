@@ -20,17 +20,19 @@ function Pet:Enable()
     Quiver:RegisterEvent("UNIT_PET", function(_, unit)
         if unit == "player" then self:UpdateState() end
     end)
-    Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:UpdateState() end)
     self:UpdateState()
 
     -- Raw frame for events that would collide with other AceEvent registrations
     -- on the Quiver object (AceEvent keys by object+event; two modules registering
     -- the same event silently overwrites the earlier handler).
     local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_ENTERING_WORLD")
     f:RegisterEvent("UNIT_HEALTH")
     f:RegisterEvent("PLAYER_REGEN_ENABLED")
     f:SetScript("OnEvent", function(_, event, unit)
-        if event == "UNIT_HEALTH" then
+        if event == "PLAYER_ENTERING_WORLD" then
+            self:UpdateState()
+        elseif event == "UNIT_HEALTH" then
             if unit == "pet" then self:UpdateState() end
         elseif event == "PLAYER_REGEN_ENABLED" then
             -- Pet may have died mid-combat; refresh sphere right-click now that
