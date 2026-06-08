@@ -1,4 +1,4 @@
--- Config panel: sphere left/right click bindings.
+-- Config panel: sphere click bindings, alerts, and macro generator.
 -- Opens via Alt+Right-click on the sphere.
 
 local Config = {}
@@ -15,11 +15,78 @@ local PADDING   = 20
 local HDR_H     = 16
 local TABS_H    = 26
 local CONTENT_H = ROWS * ITEM_H
-local SECTION_H = HDR_H + TABS_H + CONTENT_H
+local SECTION_H = HDR_H + TABS_H + CONTENT_H   -- 162
 local GAP       = 12
 local PANEL_W   = COL_W + PADDING * 2
-local NOTIFY_H  = 28
-local PANEL_H   = 46 + SECTION_H + GAP + SECTION_H + GAP + NOTIFY_H * 3 + 46
+
+-- Tab bar: 24px buttons + 4px gap before page content
+local TAB_BAR_H = 28
+
+-- Per-page content heights
+local BIND_PAGE_H   = SECTION_H + GAP + SECTION_H                    -- 336
+local MACRO_H       = 20 + (18+22+6) + (18+22+6) + (18+22+6) + (18+6) + 28  -- 210
+local MACROS_PAGE_H = (24+4+24+4+24) + GAP + MACRO_H                 -- 302
+
+local PAGE_H   = math.max(BIND_PAGE_H, MACROS_PAGE_H)   -- 336
+local PAGE_Y   = -(40 + TAB_BAR_H)                       -- where page content starts
+local PANEL_H  = 40 + TAB_BAR_H + PAGE_H + 46            -- 450
+
+local SHOTS = { "Aimed Shot", "Arcane Shot", "Multi-Shot", "Steady Shot" }
+local TRAPS = { "Frost Trap", "Freezing Trap", "Immolation Trap", "Explosive Trap", "Snake Trap" }
+
+local function MakeCycleControl(parent, keyLabel, options, initValue)
+    local ARROW_W = 22
+    local KEY_W   = 52
+    local f = CreateFrame("Frame", nil, parent)
+    f:SetWidth(COL_W)
+    f:SetHeight(22)
+
+    local idx = 1
+    for i, v in ipairs(options) do
+        if v == initValue then idx = i; break end
+    end
+
+    local keyLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    keyLbl:SetWidth(KEY_W)
+    keyLbl:SetPoint("LEFT", f, "LEFT", 0, 0)
+    keyLbl:SetJustifyH("LEFT")
+    keyLbl:SetText(keyLabel)
+    keyLbl:SetTextColor(0.7, 0.7, 0.7)
+
+    local prevBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    prevBtn:SetSize(ARROW_W, ARROW_W)
+    prevBtn:SetPoint("LEFT", keyLbl, "RIGHT", 4, 0)
+    prevBtn:SetText("<")
+
+    local nextBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    nextBtn:SetSize(ARROW_W, ARROW_W)
+    nextBtn:SetPoint("RIGHT", f, "RIGHT", 0, 0)
+    nextBtn:SetText(">")
+
+    local valLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    valLbl:SetPoint("LEFT",  prevBtn, "RIGHT", 4, 0)
+    valLbl:SetPoint("RIGHT", nextBtn, "LEFT",  -4, 0)
+    valLbl:SetJustifyH("CENTER")
+    valLbl:SetText(options[idx])
+    valLbl:SetTextColor(1, 0.82, 0)
+
+    prevBtn:SetScript("OnClick", function()
+        idx = ((idx - 2) % #options) + 1
+        valLbl:SetText(options[idx])
+    end)
+    nextBtn:SetScript("OnClick", function()
+        idx = (idx % #options) + 1
+        valLbl:SetText(options[idx])
+    end)
+
+    f.GetValue = function() return options[idx] end
+    f.SetValue = function(val)
+        for i, v in ipairs(options) do
+            if v == val then idx = i; valLbl:SetText(v); return end
+        end
+    end
+    return f
+end
 
 local function GetSpellEntries()
     local entries = {{ id = "none", label = "None" }}
@@ -44,18 +111,16 @@ local function MakeBindingSection(parent, labelText)
     container:SetWidth(COL_W)
     container:SetHeight(SECTION_H)
 
-    -- Section header
     local hdr = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     hdr:SetPoint("TOPLEFT")
     hdr:SetText(labelText)
     hdr:SetTextColor(1, 0.82, 0)
 
-    -- ── Tab buttons ─────────────────────────────────────────────────────────
     local TAB_W   = math.floor(COL_W / 3) - 2
     local tabDefs = { "spell", "macro", "none" }
     local tabBtns = {}
 
-    local spellFrame, macroFrame, noneFrame, macroEB  -- forward-declared
+    local spellFrame, macroFrame, noneFrame, macroEB
 
     local function SetActiveTab(t)
         currentType = t
@@ -82,7 +147,6 @@ local function MakeBindingSection(parent, labelText)
 
     local CONTENT_Y = -(HDR_H + TABS_H)
 
-    -- ── Spell scroll list ────────────────────────────────────────────────────
     spellFrame = CreateFrame("Frame", nil, container)
     spellFrame:SetWidth(COL_W)
     spellFrame:SetHeight(CONTENT_H)
@@ -104,7 +168,7 @@ local function MakeBindingSection(parent, labelText)
 
     local content = CreateFrame("Frame", nil, sf)
     content:SetWidth(COL_W)
-    content:SetHeight(ITEM_H)  -- resized in Refresh
+    content:SetHeight(ITEM_H)
     sf:SetScrollChild(content)
 
     local function RefreshHL()
@@ -150,7 +214,6 @@ local function MakeBindingSection(parent, labelText)
         txt:SetPoint("LEFT", b, "LEFT", 10, 0)
         b.txt = txt
 
-        -- Scripts reference b.spellId directly so they stay correct across refreshes.
         b:SetScript("OnEnter", function()
             if b.spellId ~= selectedSpell then b.txt:SetTextColor(1, 1, 1) end
         end)
@@ -164,7 +227,6 @@ local function MakeBindingSection(parent, labelText)
         return b
     end
 
-    -- ── Macro EditBox ────────────────────────────────────────────────────────
     macroFrame = CreateFrame("Frame", nil, container)
     macroFrame:SetWidth(COL_W)
     macroFrame:SetHeight(CONTENT_H)
@@ -199,7 +261,6 @@ local function MakeBindingSection(parent, labelText)
     macroEB:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     macroSF:SetScrollChild(macroEB)
 
-    -- ── None placeholder ─────────────────────────────────────────────────────
     noneFrame = CreateFrame("Frame", nil, container)
     noneFrame:SetWidth(COL_W)
     noneFrame:SetHeight(CONTENT_H)
@@ -214,20 +275,15 @@ local function MakeBindingSection(parent, labelText)
     noneLbl:SetPoint("CENTER")
     noneLbl:SetText("No action assigned")
 
-    -- ── Refresh ──────────────────────────────────────────────────────────────
-    -- Syncs button pool to current entries and resets selection state.
-    -- Called each time the panel opens — frames are reused, never recreated.
     function container:Refresh(entries, initType, initSpell, initMacro)
         currentType   = initType  or "spell"
         selectedSpell = initSpell or "none"
         macroEB:SetText(initMacro or "")
 
-        -- Grow the button pool if the spell list has expanded since last open.
         for i = #allBtns + 1, #entries do
             allBtns[i] = MakeListButton(i)
         end
 
-        -- Update visible buttons with current entry data.
         content:SetHeight(#entries * ITEM_H)
         for i, entry in ipairs(entries) do
             local b = allBtns[i]
@@ -235,14 +291,12 @@ local function MakeBindingSection(parent, labelText)
             b.txt:SetText(entry.label)
             b:Show()
         end
-        -- Hide pool slots beyond current entry count.
         for i = #entries + 1, #allBtns do
             allBtns[i]:Hide()
         end
 
         RefreshHL()
 
-        -- Scroll to show the selected entry.
         for i, entry in ipairs(entries) do
             if entry.id == selectedSpell then
                 local y = math.max(0, (i - 1) * ITEM_H - math.floor(ROWS / 2) * ITEM_H)
@@ -295,40 +349,42 @@ local function Build()
     closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, 0)
     closeBtn:SetScript("OnClick", function() f:Hide() end)
 
-    local lcSection = MakeBindingSection(f, "Left Click")
-    lcSection:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -42)
+    -- ── Page tab buttons ───────────────────────────────────────────────────────
+    local TAB_W   = math.floor(COL_W / 2) - 2
+    local tabBtns = {}
+    local pages   = {}
+
+    -- Defined after pages/buttons are created; stored on f so Toggle can call it.
+    local ShowPage
+    f.ShowPage = function(name) if ShowPage then ShowPage(name) end end
+
+    local tabDefs = { { id = "bindings", label = "Bindings" }, { id = "macros", label = "Macros" } }
+    for i, def in ipairs(tabDefs) do
+        local tb = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        tb.pageName = def.id
+        tb:SetWidth(TAB_W)
+        tb:SetHeight(24)
+        tb:SetText(def.label)
+        tb:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + (i - 1) * (TAB_W + 4), -40)
+        local captured = def.id
+        tb:SetScript("OnClick", function() f.ShowPage(captured) end)
+        tabBtns[i] = tb
+    end
+
+    -- ── Bindings page ──────────────────────────────────────────────────────────
+    local bindingsPage = CreateFrame("Frame", nil, f)
+    bindingsPage:SetWidth(COL_W)
+    bindingsPage:SetHeight(BIND_PAGE_H)
+    bindingsPage:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, PAGE_Y)
+    pages.bindings = bindingsPage
+
+    local lcSection = MakeBindingSection(bindingsPage, "Left Click")
+    lcSection:SetPoint("TOPLEFT", bindingsPage, "TOPLEFT", 0, 0)
     f.lcSection = lcSection
 
-    local rcSection = MakeBindingSection(f, "Right Click")
+    local rcSection = MakeBindingSection(bindingsPage, "Right Click")
     rcSection:SetPoint("TOPLEFT", lcSection, "BOTTOMLEFT", 0, -GAP)
     f.rcSection = rcSection
-
-    local notifyCheck = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
-    notifyCheck:SetSize(24, 24)
-    notifyCheck:SetPoint("TOPLEFT", rcSection, "BOTTOMLEFT", -2, -GAP)
-    notifyCheck.text:SetText("Notify in chat when pet dies")
-    notifyCheck:SetScript("OnClick", function(self)
-        Quiver.db.profile.notifications.petDied = self:GetChecked()
-    end)
-    f.notifyCheck = notifyCheck
-
-    local soundAmmoCheck = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
-    soundAmmoCheck:SetSize(24, 24)
-    soundAmmoCheck:SetPoint("TOPLEFT", notifyCheck, "BOTTOMLEFT", 0, -4)
-    soundAmmoCheck.text:SetText("Sound alert when ammo is low")
-    soundAmmoCheck:SetScript("OnClick", function(self)
-        Quiver.db.profile.sounds.ammoLow = self:GetChecked()
-    end)
-    f.soundAmmoCheck = soundAmmoCheck
-
-    local soundPetCheck = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
-    soundPetCheck:SetSize(24, 24)
-    soundPetCheck:SetPoint("TOPLEFT", soundAmmoCheck, "BOTTOMLEFT", 0, -4)
-    soundPetCheck.text:SetText("Sound alert when pet is unhappy")
-    soundPetCheck:SetScript("OnClick", function(self)
-        Quiver.db.profile.sounds.petUnhappy = self:GetChecked()
-    end)
-    f.soundPetCheck = soundPetCheck
 
     local applyBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     applyBtn:SetWidth(80)
@@ -358,6 +414,149 @@ local function Build()
     cancelBtn:SetPoint("RIGHT", applyBtn, "LEFT", -4, 0)
     cancelBtn:SetScript("OnClick", function() f:Hide() end)
 
+    -- ── Macros page ────────────────────────────────────────────────────────────
+    local macrosPage = CreateFrame("Frame", nil, f)
+    macrosPage:SetWidth(COL_W)
+    macrosPage:SetHeight(MACROS_PAGE_H)
+    macrosPage:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, PAGE_Y)
+    pages.macros = macrosPage
+
+    local notifyCheck = CreateFrame("CheckButton", nil, macrosPage, "UICheckButtonTemplate")
+    notifyCheck:SetSize(24, 24)
+    notifyCheck:SetPoint("TOPLEFT", macrosPage, "TOPLEFT", -2, 0)
+    notifyCheck.text:SetText("Notify in chat when pet dies")
+    notifyCheck:SetScript("OnClick", function(self)
+        Quiver.db.profile.notifications.petDied = self:GetChecked()
+    end)
+    f.notifyCheck = notifyCheck
+
+    local soundAmmoCheck = CreateFrame("CheckButton", nil, macrosPage, "UICheckButtonTemplate")
+    soundAmmoCheck:SetSize(24, 24)
+    soundAmmoCheck:SetPoint("TOPLEFT", notifyCheck, "BOTTOMLEFT", 0, -4)
+    soundAmmoCheck.text:SetText("Sound alert when ammo is low")
+    soundAmmoCheck:SetScript("OnClick", function(self)
+        Quiver.db.profile.sounds.ammoLow = self:GetChecked()
+    end)
+    f.soundAmmoCheck = soundAmmoCheck
+
+    local soundPetCheck = CreateFrame("CheckButton", nil, macrosPage, "UICheckButtonTemplate")
+    soundPetCheck:SetSize(24, 24)
+    soundPetCheck:SetPoint("TOPLEFT", soundAmmoCheck, "BOTTOMLEFT", 0, -4)
+    soundPetCheck.text:SetText("Sound alert when pet is unhappy")
+    soundPetCheck:SetScript("OnClick", function(self)
+        Quiver.db.profile.sounds.petUnhappy = self:GetChecked()
+    end)
+    f.soundPetCheck = soundPetCheck
+
+    -- ── Macro Generator ────────────────────────────────────────────────────────
+    local macroSec = CreateFrame("Frame", nil, macrosPage)
+    macroSec:SetWidth(COL_W)
+    macroSec:SetHeight(MACRO_H)
+    macroSec:SetPoint("TOPLEFT", soundPetCheck, "BOTTOMLEFT", 2, -GAP)
+
+    local macroHdr = macroSec:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    macroHdr:SetPoint("TOPLEFT", macroSec, "TOPLEFT", 0, 0)
+    macroHdr:SetText("Macro Generator")
+    macroHdr:SetTextColor(1, 0.82, 0)
+
+    local mt = Quiver.db.profile.macroTemplates
+
+    local openLbl = macroSec:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    openLbl:SetPoint("TOPLEFT", macroHdr, "BOTTOMLEFT", 0, -6)
+    openLbl:SetText("Quiver: Open  (pet attack + opening shot)")
+    openLbl:SetTextColor(0.9, 0.9, 0.9)
+
+    local openShotCtrl = MakeCycleControl(macroSec, "Shot:", SHOTS, mt.open_shot)
+    openShotCtrl:SetPoint("TOPLEFT", openLbl, "BOTTOMLEFT", 0, -2)
+
+    local fdLbl = macroSec:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    fdLbl:SetPoint("TOPLEFT", openShotCtrl, "BOTTOMLEFT", 0, -6)
+    fdLbl:SetText("Quiver: FD Trap  (Feign Death + lay trap)")
+    fdLbl:SetTextColor(0.9, 0.9, 0.9)
+
+    local fdTrapCtrl = MakeCycleControl(macroSec, "Trap:", TRAPS, mt.fdtrap)
+    fdTrapCtrl:SetPoint("TOPLEFT", fdLbl, "BOTTOMLEFT", 0, -2)
+
+    local bwLbl = macroSec:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    bwLbl:SetPoint("TOPLEFT", fdTrapCtrl, "BOTTOMLEFT", 0, -6)
+    bwLbl:SetText("Quiver: BW  (Bestial Wrath + Intimidation + shot)")
+    bwLbl:SetTextColor(0.9, 0.9, 0.9)
+
+    local bwShotCtrl = MakeCycleControl(macroSec, "Shot:", SHOTS, mt.bw_shot)
+    bwShotCtrl:SetPoint("TOPLEFT", bwLbl, "BOTTOMLEFT", 0, -2)
+
+    local mdLbl = macroSec:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    mdLbl:SetPoint("TOPLEFT", bwShotCtrl, "BOTTOMLEFT", 0, -6)
+    mdLbl:SetText("Quiver: MD  (Misdirection on focus)")
+    mdLbl:SetTextColor(0.9, 0.9, 0.9)
+
+    local createMacrosBtn = CreateFrame("Button", nil, macroSec, "UIPanelButtonTemplate")
+    createMacrosBtn:SetWidth(150)
+    createMacrosBtn:SetHeight(24)
+    createMacrosBtn:SetText("Create / Update")
+    createMacrosBtn:SetPoint("TOPLEFT", mdLbl, "BOTTOMLEFT", 0, -6)
+
+    local deleteMacrosBtn = CreateFrame("Button", nil, macroSec, "UIPanelButtonTemplate")
+    deleteMacrosBtn:SetWidth(80)
+    deleteMacrosBtn:SetHeight(24)
+    deleteMacrosBtn:SetText("Delete All")
+    deleteMacrosBtn:SetPoint("LEFT", createMacrosBtn, "RIGHT", 4, 0)
+    deleteMacrosBtn:SetScript("OnClick", function()
+        local names = { "Quiver: Open", "Quiver: FD Trap", "Quiver: BW", "Quiver: MD", "Quiver: Sting" }
+        local deleted = 0
+        for _, name in ipairs(names) do
+            local idx = GetMacroIndexByName(name)
+            if idx > 0 then
+                DeleteMacro(idx)
+                deleted = deleted + 1
+            end
+        end
+        if deleted > 0 then
+            print("|cffffcc00Quiver:|r Deleted " .. deleted .. " macro(s).")
+        else
+            print("|cffffcc00Quiver:|r No Quiver macros found to delete.")
+        end
+    end)
+    createMacrosBtn:SetScript("OnClick", function()
+        local tmpl = Quiver.db.profile.macroTemplates
+        tmpl.open_shot = openShotCtrl.GetValue()
+        tmpl.fdtrap    = fdTrapCtrl.GetValue()
+        tmpl.bw_shot   = bwShotCtrl.GetValue()
+
+        local shot = tmpl.open_shot
+        local openLines = { "#showtooltip " .. shot, "/petfollow", "/petattack [harm]", "/cast [known:" .. shot .. "] " .. shot }
+        Quiver.UI.Menus:WriteManagedMacro("Quiver: Open",   shot,          table.concat(openLines, "\n"))
+        Quiver.UI.Menus:WriteManagedMacro("Quiver: FD Trap","Feign Death", "#showtooltip Feign Death\n/cast Feign Death\n/cast " .. tmpl.fdtrap)
+        Quiver.UI.Menus:WriteManagedMacro("Quiver: BW",  "Bestial Wrath", "#showtooltip Bestial Wrath\n/cast Bestial Wrath\n/cast Intimidation\n/cast [known:" .. tmpl.bw_shot .. "] " .. tmpl.bw_shot)
+        Quiver.UI.Menus:WriteManagedMacro("Quiver: MD",   "Misdirection", "#showtooltip Misdirection\n/cast [target=focus] Misdirection")
+        local stingSel = Quiver.db.char.menuSelections.stings
+        if stingSel then
+            Quiver.UI.Menus:UpdateStingMacro(stingSel)
+        end
+        print("|cffffcc00Quiver:|r Macros created. Drag them from your macro book to your action bars.")
+    end)
+
+    f.openShotCtrl = openShotCtrl
+    f.fdTrapCtrl   = fdTrapCtrl
+    f.bwShotCtrl   = bwShotCtrl
+
+    -- ── ShowPage implementation (now all frames exist) ─────────────────────────
+    ShowPage = function(name)
+        for k, page in pairs(pages) do
+            page:SetShown(k == name)
+        end
+        applyBtn:SetShown(name == "bindings")
+        cancelBtn:SetShown(name == "bindings")
+        for _, tb in ipairs(tabBtns) do
+            local active = (tb.pageName == name)
+            tb:GetFontString():SetTextColor(
+                active and 1 or 0.5,
+                active and 0.82 or 0.5,
+                active and 0 or 0.5)
+        end
+    end
+
+    ShowPage("bindings")
     f:Hide()
     return f
 end
@@ -377,5 +576,10 @@ function Config:Toggle()
     panel.notifyCheck:SetChecked(Quiver.db.profile.notifications.petDied)
     panel.soundAmmoCheck:SetChecked(Quiver.db.profile.sounds.ammoLow)
     panel.soundPetCheck:SetChecked(Quiver.db.profile.sounds.petUnhappy)
+    local mt = Quiver.db.profile.macroTemplates
+    panel.openShotCtrl.SetValue(mt.open_shot)
+    panel.fdTrapCtrl.SetValue(mt.fdtrap)
+    panel.bwShotCtrl.SetValue(mt.bw_shot)
+    panel.ShowPage("bindings")
     panel:Show()
 end

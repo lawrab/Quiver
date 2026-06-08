@@ -89,6 +89,13 @@ read_globals = {
     "SetCVar",
     "GetBindingKey",
 
+    -- Macro API
+    "GetMacroIndexByName",
+    "GetNumMacros",
+    "CreateMacro",
+    "EditMacro",
+    "DeleteMacro",
+
     -- Misc
     "math",
     "table",

@@ -27,6 +27,11 @@ Quiver.defaults = {
         notifications = {
             petDied = true,
         },
+        macroTemplates = {
+            open_shot = "Arcane Shot",
+            fdtrap    = "Frost Trap",
+            bw_shot   = "Arcane Shot",
+        },
     },
     char = {
         menuSelections = {},

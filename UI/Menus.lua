@@ -334,6 +334,22 @@ local function PopulateMenu(menu)
     local triggerBtn = _G[menu.triggerName]
     if not triggerBtn then return end
 
+    -- Recompute grow direction: side buttons expand away from the sphere center;
+    -- top/bottom buttons (x-offset ≈ 0) fall back to screen-edge detection.
+    local cx = triggerBtn:GetCenter()
+    if cx then
+        local sphere = Quiver.UI.Sphere.frame
+        local sx = sphere and sphere:GetCenter()
+        local dx = sx and (cx - sx) or 0
+        if dx > 20 then
+            menu.growLeft = false       -- button is right of sphere → expand right
+        elseif dx < -20 then
+            menu.growLeft = true        -- button is left of sphere → expand left
+        else
+            menu.growLeft = cx > UIParent:GetWidth() / 2  -- top/bottom: use screen edge
+        end
+    end
+
     for i, b in ipairs(menu.buttons) do
         b:ClearAllPoints()
         if menu.growLeft then
@@ -539,6 +555,9 @@ function Menus:SelectEntry(menu, entry)
     if menuName then
         Quiver.db.char.menuSelections[menuName] = entry.spell
     end
+    if menuName == "stings" and entry.spell then
+        self:UpdateStingMacro(entry.spell)
+    end
 
     -- SetNormalTexture is not combat-restricted; update icon immediately for visual feedback.
     -- Attribute (macrotext2) is deferred via selectionTicker → ApplySelectionToTrigger.
@@ -587,8 +606,9 @@ function Menus:Toggle(menuName)
     local menu = self.menus[menuName]
     if not menu or #menu.buttons == 0 then return end
 
+    local inCombat = InCombatLockdown()
     for _, b in ipairs(menu.buttons) do
-        b:SetFrameStrata("DIALOG")
+        if not inCombat then b:SetFrameStrata("DIALOG") end
         b:SetAlpha(1)
         if b.blocker then b.blocker:Hide() end
     end
@@ -601,9 +621,10 @@ function Menus:Toggle(menuName)
 end
 
 function Menus:HideAll()
+    local inCombat = InCombatLockdown()
     for _, menu in pairs(self.menus) do
         for _, b in ipairs(menu.buttons) do
-            b:SetFrameStrata("MEDIUM")
+            if not inCombat then b:SetFrameStrata("MEDIUM") end
             b:SetAlpha(0)
             if b.blocker then
                 b.blocker:SetFrameStrata("MEDIUM")
@@ -699,10 +720,11 @@ function Menus:UpdateTrapCooldowns()
 end
 
 function Menus:HideFoodPicker()
+    local inCombat = InCombatLockdown()
     for _, b in ipairs(foodPickerButtons) do
-        b:SetButtonState("NORMAL")
+        if not inCombat then b:SetButtonState("NORMAL") end
         b:SetAlpha(0)
-        b:EnableMouse(false)
+        if not inCombat then b:EnableMouse(false) end
     end
     foodPickerOpen = false
 end
@@ -945,13 +967,38 @@ function Menus:ToggleFoodPicker()
     else
         local foods = Quiver.Modules.Pet:GetSuitableFood()
         self:RefreshFoodPicker(foods)
+        local inCombat = InCombatLockdown()
         for i, b in ipairs(foodPickerButtons) do
             local hasFood = foods[i] ~= nil
             b:SetAlpha(hasFood and 1 or 0)
-            b:EnableMouse(hasFood)
+            if not inCombat then b:EnableMouse(hasFood) end
         end
         foodPickerOpen = true
     end
+end
+
+-- ── Managed macros ────────────────────────────────────────────────────────────
+
+local function WriteMacro(name, iconSpell, body)
+    local _, _, icon = GetSpellInfo(iconSpell or "")
+    icon = icon or "INV_Misc_QuestionMark"
+    local idx = GetMacroIndexByName(name)
+    if idx > 0 then
+        EditMacro(idx, name, icon, body)
+    elseif GetNumMacros() < 36 then
+        CreateMacro(name, icon, body, false)
+    else
+        print("|cffff4444Quiver:|r Macro book full (36/36). Free a slot and try again.")
+    end
+end
+
+function Menus:UpdateStingMacro(spellName)
+    if not spellName then return end
+    WriteMacro("Quiver: Sting", spellName, "#showtooltip " .. spellName .. "\n/cast " .. spellName)
+end
+
+function Menus:WriteManagedMacro(name, iconSpell, body)
+    WriteMacro(name, iconSpell, body)
 end
 
 -- ── Menu definitions ──────────────────────────────────────────────────────────
@@ -990,6 +1037,13 @@ function Menus:Initialize()
             { spell = "Beast Lore",     label = "Lore"    },
         }),
 
+        stings = NewMenu("QuiverBtn_stings", "Stings", false, {
+            { spell = "Serpent Sting", label = "Serpent" },
+            { spell = "Viper Sting",   label = "Viper"   },
+            { spell = "Scorpid Sting", label = "Scorpid" },
+            { spell = "Wyvern Sting",  label = "Wyvern"  },
+        }),
+
         traps = NewMenu("QuiverBtn_traps", "Traps", true, (function()
             local t = {}
             for _, trap in ipairs(Quiver.Modules.Traps.TRAPS) do
@@ -1023,7 +1077,11 @@ function Menus:Initialize()
             Quiver.UI.Sphere:UpdateOnClick()
         end
     end)
-    Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function() Menus:RebuildAll() end)
+    Quiver:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+        Menus:RebuildAll()
+        local stingSel = Quiver.db.char.menuSelections.stings
+        if stingSel then Menus:UpdateStingMacro(stingSel) end
+    end)
     Quiver:RegisterEvent("PLAYER_REGEN_ENABLED", function()
         if rebuildPending then
             rebuildPending = false

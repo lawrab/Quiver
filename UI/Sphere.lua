@@ -6,7 +6,7 @@ Quiver.UI = Quiver.UI or {}
 Quiver.UI.Sphere = Sphere
 
 local SPHERE_SIZE = 80
-local BAR_WIDTH   = 102  -- spans traps (210°) to food (330°) button centers
+local BAR_WIDTH   = 102  -- spans traps (210°) to food (330°) button centers horizontally
 local _autoShotMod  -- cached after Initialize; avoids global chain lookup every frame
 
 -- Pre-allocated color constants — reused every call, never re-created
@@ -134,7 +134,9 @@ function Sphere:Initialize()
     local barBg = CreateFrame("Frame", nil, UIParent)
     barBg:SetWidth(BAR_WIDTH)
     barBg:SetHeight(6)
-    barBg:SetPoint("TOP", f, "BOTTOM", 0, -8)
+    -- Stings button sits at 270° (radius 59): its bottom edge is 32px below the
+    -- sphere frame's bottom. Push the bar below it with an 8px gap → -40.
+    barBg:SetPoint("TOP", f, "BOTTOM", 0, -40)
     local barBgTex = barBg:CreateTexture(nil, "BACKGROUND")
     barBgTex:SetAllPoints(barBg)
     barBgTex:SetTexture(0.1, 0.1, 0.1, 0.7)
@@ -176,7 +178,7 @@ function Sphere:SetupDrag(f)
     f:SetMovable(true)
     f:RegisterForDrag("MiddleButton")
     f:SetScript("OnDragStart", function(frame)
-        if not Quiver.db.profile.sphere.locked then
+        if not Quiver.db.profile.sphere.locked and not InCombatLockdown() then
             frame:StartMoving()
         end
     end)
@@ -185,6 +187,9 @@ function Sphere:SetupDrag(f)
         local _, _, _, x, y = frame:GetPoint()
         Quiver.db.profile.sphere.x = x
         Quiver.db.profile.sphere.y = y
+        if not InCombatLockdown() then
+            Quiver.UI.Menus:RebuildAll()
+        end
     end)
 end
 
@@ -193,6 +198,7 @@ function Sphere:SetupMenuButtons(f)
     local buttons = {
         { name = "aspects",  angle = 90,  spell = "Aspect of the Hawk" },
         { name = "pet",      angle = 30,  spell = "Call Pet" },
+        { name = "stings",   angle = 270, spell = "Serpent Sting" },
         { name = "traps",    angle = 210, spell = "Frost Trap" },
         { name = "tracking", angle = 150, spell = "Track Beasts" },
         { name = "food",     angle = 330, spell = "Feed Pet" },
