@@ -85,8 +85,18 @@ function Aspects:DetectCurrentAspect()
 
     Quiver.UI.Sphere:UpdateColor()
 
-    -- Keep the aspects orbit-button right-click macro in sync with current state
-    -- so right-click always targets the aspect you're NOT currently in.
+    -- SetNormalTexture is not combat-restricted; update the orbit button icon immediately
+    -- so it tracks the live aspect even during combat.
+    local triggerBtn = _G["QuiverBtn_aspects"]
+    if triggerBtn and self.current then
+        local _, _, icon = GetSpellInfo(self.current.name)
+        if icon then
+            triggerBtn:SetNormalTexture(icon)
+            triggerBtn:SetPushedTexture(icon)
+        end
+    end
+
+    -- SetAttribute is combat-restricted; defer macro/attribute update to out-of-combat.
     if not InCombatLockdown() and Quiver.UI.Menus and Quiver.UI.Menus.menus then
         Quiver.UI.Menus:ApplySelectionToTrigger(Quiver.UI.Menus.menus.aspects)
     end

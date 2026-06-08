@@ -463,45 +463,55 @@ function Menus:ApplySelectionToTrigger(menu)
         local name = type(castTarget) == "number" and GetSpellInfo(castTarget) or castTarget
         if name then
             local macro
-            if menu.triggerName == "QuiverBtn_aspects" and menu.otherSelected then
-                local otherId   = menu.otherSelected.spell and GetSpellId(menu.otherSelected.spell)
-                local otherCast = otherId or menu.otherSelected.spell
-                local otherName = type(otherCast) == "number" and GetSpellInfo(otherCast) or otherCast
-                if otherName then
-                    local current = Quiver.Modules.Aspects.current
-                    if current and current.name == name then
-                        -- Already in selected aspect: right-click casts the other one.
-                        macro = "/cast " .. otherName
-                    else
-                        -- Not in selected aspect: right-click restores it.
-                        macro = "/cast " .. name
-                    end
-                    -- Icon tracks the currently active aspect so the button reflects live state.
-                    local iconName = (Quiver.Modules.Aspects.current and Quiver.Modules.Aspects.current.name) or name
-                    local _, _, aspectIcon = GetSpellInfo(iconName)
-                    if aspectIcon then
-                        triggerBtn:SetNormalTexture(aspectIcon)
-                        triggerBtn:SetPushedTexture(aspectIcon)
-                    end
-                    -- Badge: show the swap-target (the aspect right-click will cast next).
-                    local badge = triggerBtn.swapBadge
-                    if badge then
-                        local badgeTarget = (current and current.name == name) and otherName or name
-                        local _, _, badgeIcon = GetSpellInfo(badgeTarget)
-                        if badgeIcon then
-                            badge:SetTexture(badgeIcon)
-                            badge:Show()
+            local icon
+            if menu.triggerName == "QuiverBtn_aspects" then
+                -- Icon always tracks the CURRENTLY ACTIVE aspect (live state), not the selection.
+                local current = Quiver.Modules.Aspects.current
+                local iconName = (current and current.name) or name
+                local _, _, aspectIcon = GetSpellInfo(iconName)
+                icon = aspectIcon
+                if menu.otherSelected then
+                    local otherId   = menu.otherSelected.spell and GetSpellId(menu.otherSelected.spell)
+                    local otherCast = otherId or menu.otherSelected.spell
+                    local otherName = type(otherCast) == "number" and GetSpellInfo(otherCast) or otherCast
+                    if otherName then
+                        if current and current.name == name then
+                            macro = "/cast " .. otherName
                         else
-                            badge:Hide()
+                            macro = "/cast " .. name
                         end
+                        local badge = triggerBtn.swapBadge
+                        if badge then
+                            local badgeTarget = (current and current.name == name) and otherName or name
+                            local _, _, badgeIcon = GetSpellInfo(badgeTarget)
+                            if badgeIcon then
+                                badge:SetTexture(badgeIcon)
+                                badge:Show()
+                            else
+                                badge:Hide()
+                            end
+                        end
+                    else
+                        macro = "/cast " .. name
+                        if triggerBtn.swapBadge then triggerBtn.swapBadge:Hide() end
                     end
                 else
                     macro = "/cast " .. name
+                    if triggerBtn.swapBadge then triggerBtn.swapBadge:Hide() end
                 end
             else
+                -- Non-aspects: icon shows the selected spell.
+                icon = entry.icon
+                if not icon then
+                    local _, _, si = GetSpellInfo(castTarget)
+                    icon = si
+                end
                 macro = "/cast " .. name
-                -- No swap partner: hide the badge.
                 if triggerBtn.swapBadge then triggerBtn.swapBadge:Hide() end
+            end
+            if icon then
+                triggerBtn:SetNormalTexture(icon)
+                triggerBtn:SetPushedTexture(icon)
             end
             triggerBtn:SetAttribute("type2", "macro")
             triggerBtn:SetAttribute("macrotext2", macro)
@@ -530,19 +540,23 @@ function Menus:SelectEntry(menu, entry)
         Quiver.db.char.menuSelections[menuName] = entry.spell
     end
 
-    -- Update trigger icon
-    local triggerBtn = _G[menu.triggerName]
-    if triggerBtn then
-        local spellId = entry.spell and GetSpellId(entry.spell)
-        local castTarget = spellId or entry.spell
-        local icon = entry.icon
-        if not icon and castTarget then
-            local _, _, si = GetSpellInfo(castTarget)
-            icon = si
-        end
-        if icon then
-            triggerBtn:SetNormalTexture(icon)
-            triggerBtn:SetPushedTexture(icon)
+    -- SetNormalTexture is not combat-restricted; update icon immediately for visual feedback.
+    -- Attribute (macrotext2) is deferred via selectionTicker → ApplySelectionToTrigger.
+    -- Skip aspects: DetectCurrentAspect owns the aspects icon and tracks live state.
+    if menu.triggerName ~= "QuiverBtn_aspects" then
+        local triggerBtn = _G[menu.triggerName]
+        if triggerBtn then
+            local spellId = entry.spell and GetSpellId(entry.spell)
+            local castTarget = spellId or entry.spell
+            local icon = entry.icon
+            if not icon and castTarget then
+                local _, _, si = GetSpellInfo(castTarget)
+                icon = si
+            end
+            if icon then
+                triggerBtn:SetNormalTexture(icon)
+                triggerBtn:SetPushedTexture(icon)
+            end
         end
     end
 
@@ -853,6 +867,7 @@ function Menus:UpdateFoodOrbitButton()
 end
 
 function Menus:RebuildFoodPicker()
+    if InCombatLockdown() then return end
     if #foodPickerButtons == 0 then return end
     if not Quiver.Modules.Pet.exists then
         self:UpdateFoodOrbitButton()
@@ -972,6 +987,7 @@ function Menus:Initialize()
             { spell = "Revive Pet",     label = "Revive"  },
             { spell = "Mend Pet",       label = "Mend"    },
             { spell = "Beast Training", label = "Train"   },
+            { spell = "Beast Lore",     label = "Lore"    },
         }),
 
         traps = NewMenu("QuiverBtn_traps", "Traps", true, (function()
@@ -1014,9 +1030,11 @@ function Menus:Initialize()
             Menus:RebuildAll()
             Quiver.UI.Sphere:UpdateOnClick()
         else
-            -- Aspect may have changed mid-combat; refresh the swap macro now that
-            -- we can write secure attributes again.
-            Menus:ApplySelectionToTrigger(Menus.menus.aspects)
+            -- Refresh all menus: aspects swap macro tracks live aspect state, and any
+            -- menu selection made in combat needs its icon + attribute written now.
+            for _, menu in pairs(Menus.menus) do
+                Menus:ApplySelectionToTrigger(menu)
+            end
         end
     end)
     Quiver:RegisterEvent("BAG_UPDATE", function()

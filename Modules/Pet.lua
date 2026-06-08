@@ -35,8 +35,9 @@ function Pet:Enable()
         elseif event == "UNIT_HEALTH" then
             if unit == "pet" then self:UpdateState() end
         elseif event == "PLAYER_REGEN_ENABLED" then
-            -- Pet may have died mid-combat; refresh sphere right-click now that
-            -- secure attributes can be written again.
+            -- Pet state may have changed mid-combat (tame, death); rebuild now
+            -- that layout APIs (ClearAllPoints/SetPoint) are available again.
+            Quiver.UI.Menus:RebuildFoodPicker()
             Quiver.UI.Sphere:UpdateOnClick()
         end
     end)
@@ -64,8 +65,9 @@ function Pet:Disable()
 end
 
 function Pet:UpdateState()
-    local wasExists = self.exists
-    local wasDead   = self.dead
+    local wasExists    = self.exists
+    local wasDead      = self.dead
+    local wasHappiness = self.happiness
     self.exists = UnitExists("pet")
     if self.exists then
         self.happiness = GetPetHappiness and GetPetHappiness() or nil
@@ -76,6 +78,19 @@ function Pet:UpdateState()
     end
     Quiver.UI.Sphere:UpdatePetIndicator()
     if self.exists ~= wasExists then
+        -- New pet appeared: if the saved food isn't in this pet's suitable food list
+        -- (different pet type), clear the selection so the player picks food for the new pet.
+        if self.exists and not wasExists and Quiver.db and Quiver.db.char.menuSelections.food then
+            local savedName = Quiver.db.char.menuSelections.food.name
+            local foods = self:GetSuitableFood()
+            local compatible = false
+            for _, food in ipairs(foods) do
+                if food.name == savedName then compatible = true; break end
+            end
+            if not compatible then
+                Quiver.db.char.menuSelections.food = nil
+            end
+        end
         Quiver.UI.Menus:RebuildFoodPicker()
     end
     if self.exists ~= wasExists or self.dead ~= wasDead then
@@ -86,7 +101,8 @@ function Pet:UpdateState()
         print("|cffffcc00Quiver:|r Your pet died \226\128\148 right-click the sphere to revive.")
     end
 
-    if self.happiness == 1 and Quiver.db.profile.sounds.petUnhappy then
+    -- Only play the sound when happiness transitions TO unhappy, not on every tick.
+    if self.happiness == 1 and wasHappiness ~= 1 and Quiver.db.profile.sounds.petUnhappy then
         PlaySound(618)  -- PET_DISMISS_POOF: a subtle pet-related sound
     end
 end
