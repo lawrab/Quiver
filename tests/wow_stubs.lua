@@ -19,9 +19,10 @@ Quiver = {
             UpdateTrackingIndicator = function() end,
         },
         Menus = {
-            RebuildFoodPicker   = function() end,
-            UpdateTrapCooldowns = function() end,
+            RebuildFoodPicker       = function() end,
+            UpdateTrapCooldowns     = function() end,
             ApplySelectionToTrigger = function() end,
+            UpdateBWMacro           = function() end,
             menus = {},
         },
     },
@@ -35,6 +36,7 @@ Quiver = {
                 petDied = false,
             },
             ammoWarnThreshold = 100,
+            petTankMode = false,
         },
         char = {
             menuSelections = {},
@@ -93,6 +95,21 @@ end
 
 function GetPetHappiness()
     return _G._petHappiness
+end
+
+-- ── Pet action bar ────────────────────────────────────────────────────────────
+
+_G._petActions = {}   -- slot → { name, autoCastAllowed, autoCastEnabled }
+
+function GetPetActionInfo(slot)
+    local a = _G._petActions[slot]
+    if not a then return nil end
+    return a.name, nil, nil, nil, a.autoCastAllowed, a.autoCastEnabled
+end
+
+function TogglePetAutocast(slot)
+    local a = _G._petActions[slot]
+    if a then a.autoCastEnabled = not a.autoCastEnabled end
 end
 
 -- ── Spell API ─────────────────────────────────────────────────────────────────

@@ -592,6 +592,7 @@ function Menus:RebuildAll()
         PopulateMenu(menu)
     end
     self:RebuildFoodPicker()
+    self:UpdateTankOrbitButton()
 end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
@@ -997,6 +998,57 @@ function Menus:UpdateStingMacro(spellName)
     WriteMacro("Quiver: Sting", spellName, "#showtooltip " .. spellName .. "\n/cast " .. spellName)
 end
 
+function Menus:BuildBWMacroBody()
+    local lines = { "#showtooltip Bestial Wrath", "/cast Bestial Wrath" }
+    if Quiver.db.profile.petTankMode then
+        lines[#lines+1] = "/cast [known:Intimidation] Intimidation"
+    end
+    return table.concat(lines, "\n")
+end
+
+function Menus:UpdateBWMacro()
+    if GetMacroIndexByName("Quiver: BW") > 0 then
+        WriteMacro("Quiver: BW", "Bestial Wrath", self:BuildBWMacroBody())
+    end
+end
+
+function Menus:UpdateTankOrbitButton()
+    local btn = Menus._tankOrbitBtn
+    if not btn or InCombatLockdown() then return end
+    -- Find Growl in the pet action bar — GetPetActionInfo returns the texture
+    -- directly, unlike GetSpellInfo which returns nil for pet-only spells.
+    local growlSlot, growlIcon, growlOn
+    for i = 1, 10 do
+        local name, tex, isToken, _, _, autoCastEnabled = GetPetActionInfo(i)
+        if name == "Growl" then
+            growlSlot      = i
+            growlIcon      = (not isToken) and tex or nil
+            growlOn        = autoCastEnabled == true
+            break
+        end
+    end
+    -- Treat the actual Growl autocast state as authoritative. This keeps
+    -- petTankMode in sync after pet summons (which reset the action bar to
+    -- defaults) and any manual toggles via the native pet bar.
+    if growlSlot and Quiver.db then
+        Quiver.db.profile.petTankMode = growlOn
+    end
+    if growlIcon then
+        btn:SetNormalTexture(growlIcon)
+        btn:SetPushedTexture(growlIcon)
+    end
+    if growlSlot then
+        btn:SetAttribute("type", "macro")
+        btn:SetAttribute("macrotext", "/click PetActionButton" .. growlSlot .. " RightButton")
+    else
+        btn:SetAttribute("type", nil)
+        btn:SetAttribute("macrotext", nil)
+    end
+    local enabled = Quiver.db and Quiver.db.profile.petTankMode
+    local tex = btn:GetNormalTexture()
+    if tex then tex:SetDesaturated(not enabled) end
+end
+
 function Menus:WriteManagedMacro(name, iconSpell, body)
     WriteMacro(name, iconSpell, body)
 end
@@ -1109,4 +1161,14 @@ function Menus:Initialize()
     -- Cache trigger button frame references; used in hot paths to avoid _G lookups.
     Menus._trapsTriggerBtn = _G["QuiverBtn_traps"]
     Menus._foodOrbitBtn    = _G["QuiverBtn_food"]
+    Menus._tankOrbitBtn    = _G["QuiverBtn_tank"]
+
+    -- PET_BAR_UPDATE fires when the pet action bar changes state — including when
+    -- mounting hides the bar and dismounting restores it. Use a raw frame to avoid
+    -- AceEvent handler collision with other modules registering the same event.
+    local petBarFrame = CreateFrame("Frame")
+    petBarFrame:RegisterEvent("PET_BAR_UPDATE")
+    petBarFrame:SetScript("OnEvent", function()
+        Menus:UpdateTankOrbitButton()
+    end)
 end

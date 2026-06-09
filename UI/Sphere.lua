@@ -195,13 +195,15 @@ end
 
 function Sphere:SetupMenuButtons(f)
     -- Representative spell for each section — icon pulled from GetSpellInfo
+    -- 7 buttons evenly spaced at 360/7 ≈ 51.4° intervals starting at 0°.
     local buttons = {
-        { name = "aspects",  angle = 90,  spell = "Aspect of the Hawk" },
-        { name = "pet",      angle = 30,  spell = "Call Pet" },
-        { name = "stings",   angle = 270, spell = "Serpent Sting" },
-        { name = "traps",    angle = 210, spell = "Frost Trap" },
-        { name = "tracking", angle = 150, spell = "Track Beasts" },
-        { name = "food",     angle = 330, spell = "Feed Pet" },
+        { name = "tank",     angle = 0,   spell = "Growl"             },
+        { name = "pet",      angle = 51,  spell = "Call Pet"          },
+        { name = "aspects",  angle = 103, spell = "Aspect of the Hawk"},
+        { name = "tracking", angle = 154, spell = "Track Beasts"      },
+        { name = "traps",    angle = 206, spell = "Frost Trap"        },
+        { name = "stings",   angle = 257, spell = "Serpent Sting"     },
+        { name = "food",     angle = 309, spell = "Feed Pet"          },
     }
 
     local BTN_SIZE = 26
@@ -259,7 +261,24 @@ function Sphere:SetupMenuButtons(f)
         end
 
         local menuName = btn.name
-        if btn.name == "food" then
+        if btn.name == "tank" then
+            b:SetScript("PostClick", function(_, button)
+                if button == "LeftButton" then
+                    Quiver.Modules.Pet:ToggleTankMode()
+                elseif button == "RightButton" then
+                    Quiver.UI.Menus:HideAll()
+                end
+            end)
+            b:SetScript("OnEnter", function(frame)
+                local on = Quiver.db and Quiver.db.profile.petTankMode
+                GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
+                GameTooltip:AddLine("Tank Mode: " .. (on and "|cff00ff00ON|r" or "|cffff4444OFF|r"))
+                GameTooltip:AddLine(on and "Growl on  \xE2\x80\x93  BW includes Intimidation"
+                                       or "Growl off  \xE2\x80\x93  BW excludes Intimidation", 0.6, 0.6, 0.6)
+                GameTooltip:AddLine("Click to toggle", 0.4, 0.8, 1.0)
+                GameTooltip:Show()
+            end)
+        elseif btn.name == "food" then
             b:SetScript("PostClick", function(_, button)
                 if button == "LeftButton" then
                     Quiver.UI.Menus:ToggleFoodPicker()

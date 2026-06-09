@@ -1,8 +1,9 @@
--- Pet state tracking: happiness, health, existence
+-- Pet state tracking: happiness, health, existence, tank mode
 
 local Pet = {}
 Quiver.Modules = Quiver.Modules or {}
 Quiver.Modules.Pet = Pet
+
 
 local HAPPINESS_COLORS = {
     [1] = {1.0, 0.2, 0.2}, -- unhappy: red
@@ -25,6 +26,8 @@ function Pet:Enable()
     -- Raw frame for events that would collide with other AceEvent registrations
     -- on the Quiver object (AceEvent keys by object+event; two modules registering
     -- the same event silently overwrites the earlier handler).
+    self:UpdateTankModeBadge()
+
     local f = CreateFrame("Frame")
     f:RegisterEvent("PLAYER_ENTERING_WORLD")
     f:RegisterEvent("UNIT_HEALTH")
@@ -105,6 +108,26 @@ function Pet:UpdateState()
     if self.happiness == 1 and wasHappiness ~= 1 and Quiver.db.profile.sounds.petUnhappy then
         PlaySound(618)  -- PET_DISMISS_POOF: a subtle pet-related sound
     end
+end
+
+function Pet:ToggleTankMode()
+    self:SetTankMode(not Quiver.db.profile.petTankMode)
+end
+
+function Pet:SetTankMode(enabled)
+    Quiver.db.profile.petTankMode = enabled
+    if Quiver.UI.Menus then
+        Quiver.UI.Menus:UpdateBWMacro()
+    end
+    self:UpdateTankModeBadge()
+end
+
+function Pet:UpdateTankModeBadge()
+    local btn = _G["QuiverBtn_tank"]
+    if not btn then return end
+    local enabled = Quiver.db.profile.petTankMode
+    local tex = btn:GetNormalTexture()
+    if tex then tex:SetDesaturated(not enabled) end
 end
 
 function Pet:GetHappinessColor()

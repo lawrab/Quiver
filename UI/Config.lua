@@ -24,15 +24,14 @@ local TAB_BAR_H = 28
 
 -- Per-page content heights
 local BIND_PAGE_H   = SECTION_H + GAP + SECTION_H                    -- 336
-local MACRO_H       = 20 + (18+22+6) + (18+22+6) + (18+22+6) + (18+6) + 28  -- 210
-local MACROS_PAGE_H = (24+4+24+4+24) + GAP + MACRO_H                 -- 302
+local MACRO_H       = 20 + (18+22+6) + (18+6) + (18+6) + 28   -- 142
+local MACROS_PAGE_H = (24+4+24+4+24) + GAP + MACRO_H          -- 234
 
 local PAGE_H   = math.max(BIND_PAGE_H, MACROS_PAGE_H)   -- 336
 local PAGE_Y   = -(40 + TAB_BAR_H)                       -- where page content starts
 local PANEL_H  = 40 + TAB_BAR_H + PAGE_H + 46            -- 450
 
-local SHOTS = { "Aimed Shot", "Arcane Shot", "Multi-Shot", "Steady Shot" }
-local TRAPS = { "Frost Trap", "Freezing Trap", "Immolation Trap", "Explosive Trap", "Snake Trap" }
+local SHOTS = { "Aimed Shot", "Arcane Shot", "Concussive Shot", "Hunter's Mark", "Multi-Shot", "Steady Shot" }
 
 local function MakeCycleControl(parent, keyLabel, options, initValue)
     local ARROW_W = 22
@@ -469,24 +468,13 @@ local function Build()
     local openShotCtrl = MakeCycleControl(macroSec, "Shot:", SHOTS, mt.open_shot)
     openShotCtrl:SetPoint("TOPLEFT", openLbl, "BOTTOMLEFT", 0, -2)
 
-    local fdLbl = macroSec:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    fdLbl:SetPoint("TOPLEFT", openShotCtrl, "BOTTOMLEFT", 0, -6)
-    fdLbl:SetText("Quiver: FD Trap  (Feign Death + lay trap)")
-    fdLbl:SetTextColor(0.9, 0.9, 0.9)
-
-    local fdTrapCtrl = MakeCycleControl(macroSec, "Trap:", TRAPS, mt.fdtrap)
-    fdTrapCtrl:SetPoint("TOPLEFT", fdLbl, "BOTTOMLEFT", 0, -2)
-
     local bwLbl = macroSec:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    bwLbl:SetPoint("TOPLEFT", fdTrapCtrl, "BOTTOMLEFT", 0, -6)
-    bwLbl:SetText("Quiver: BW  (Bestial Wrath + Intimidation + shot)")
+    bwLbl:SetPoint("TOPLEFT", openShotCtrl, "BOTTOMLEFT", 0, -6)
+    bwLbl:SetText("Quiver: BW  (+ Intimidation in Tank Mode)")
     bwLbl:SetTextColor(0.9, 0.9, 0.9)
 
-    local bwShotCtrl = MakeCycleControl(macroSec, "Shot:", SHOTS, mt.bw_shot)
-    bwShotCtrl:SetPoint("TOPLEFT", bwLbl, "BOTTOMLEFT", 0, -2)
-
     local mdLbl = macroSec:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    mdLbl:SetPoint("TOPLEFT", bwShotCtrl, "BOTTOMLEFT", 0, -6)
+    mdLbl:SetPoint("TOPLEFT", bwLbl, "BOTTOMLEFT", 0, -6)
     mdLbl:SetText("Quiver: MD  (Misdirection on focus)")
     mdLbl:SetTextColor(0.9, 0.9, 0.9)
 
@@ -502,7 +490,7 @@ local function Build()
     deleteMacrosBtn:SetText("Delete All")
     deleteMacrosBtn:SetPoint("LEFT", createMacrosBtn, "RIGHT", 4, 0)
     deleteMacrosBtn:SetScript("OnClick", function()
-        local names = { "Quiver: Open", "Quiver: FD Trap", "Quiver: BW", "Quiver: MD", "Quiver: Sting" }
+        local names = { "Quiver: Open", "Quiver: BW", "Quiver: MD", "Quiver: Sting" }
         local deleted = 0
         for _, name in ipairs(names) do
             local idx = GetMacroIndexByName(name)
@@ -520,15 +508,17 @@ local function Build()
     createMacrosBtn:SetScript("OnClick", function()
         local tmpl = Quiver.db.profile.macroTemplates
         tmpl.open_shot = openShotCtrl.GetValue()
-        tmpl.fdtrap    = fdTrapCtrl.GetValue()
-        tmpl.bw_shot   = bwShotCtrl.GetValue()
 
         local shot = tmpl.open_shot
-        local openLines = { "#showtooltip " .. shot, "/petfollow", "/petattack [harm]", "/cast [known:" .. shot .. "] " .. shot }
-        Quiver.UI.Menus:WriteManagedMacro("Quiver: Open",   shot,          table.concat(openLines, "\n"))
-        Quiver.UI.Menus:WriteManagedMacro("Quiver: FD Trap","Feign Death", "#showtooltip Feign Death\n/cast Feign Death\n/cast " .. tmpl.fdtrap)
-        Quiver.UI.Menus:WriteManagedMacro("Quiver: BW",  "Bestial Wrath", "#showtooltip Bestial Wrath\n/cast Bestial Wrath\n/cast Intimidation\n/cast [known:" .. tmpl.bw_shot .. "] " .. tmpl.bw_shot)
-        Quiver.UI.Menus:WriteManagedMacro("Quiver: MD",   "Misdirection", "#showtooltip Misdirection\n/cast [target=focus] Misdirection")
+        local openLines = {
+            "#showtooltip " .. shot,
+            "/petfollow",
+            "/petattack [harm]",
+            "/cast [known:" .. shot .. "] " .. shot,
+        }
+        Quiver.UI.Menus:WriteManagedMacro("Quiver: Open", shot,           table.concat(openLines, "\n"))
+        Quiver.UI.Menus:WriteManagedMacro("Quiver: BW",  "Bestial Wrath", Quiver.UI.Menus:BuildBWMacroBody())
+        Quiver.UI.Menus:WriteManagedMacro("Quiver: MD",  "Misdirection",  "#showtooltip Misdirection\n/cast [target=focus] Misdirection")
         local stingSel = Quiver.db.char.menuSelections.stings
         if stingSel then
             Quiver.UI.Menus:UpdateStingMacro(stingSel)
@@ -537,8 +527,6 @@ local function Build()
     end)
 
     f.openShotCtrl = openShotCtrl
-    f.fdTrapCtrl   = fdTrapCtrl
-    f.bwShotCtrl   = bwShotCtrl
 
     -- ── ShowPage implementation (now all frames exist) ─────────────────────────
     ShowPage = function(name)
@@ -578,8 +566,6 @@ function Config:Toggle()
     panel.soundPetCheck:SetChecked(Quiver.db.profile.sounds.petUnhappy)
     local mt = Quiver.db.profile.macroTemplates
     panel.openShotCtrl.SetValue(mt.open_shot)
-    panel.fdTrapCtrl.SetValue(mt.fdtrap)
-    panel.bwShotCtrl.SetValue(mt.bw_shot)
     panel.ShowPage("bindings")
     panel:Show()
 end
