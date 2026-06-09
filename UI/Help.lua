@@ -154,7 +154,6 @@ local function Build()
     local f = CreateFrame("Frame", "QuiverHelpWindow", UIParent, "BackdropTemplate")
     f:SetWidth(WIN_W)
     f:SetHeight(WIN_H)
-    f:SetPoint("CENTER", UIParent, "CENTER", 60, 0)
     f:SetFrameStrata("DIALOG")
     f:SetMovable(true)
     f:EnableMouse(true)
@@ -254,11 +253,22 @@ end
 
 -- ── Public API ─────────────────────────────────────────────────────────────────
 
+local function PositionWindow()
+    local cfg = _G["QuiverConfigPanel"]
+    helpWin:ClearAllPoints()
+    if cfg and cfg:IsShown() then
+        helpWin:SetPoint("TOPLEFT", cfg, "TOPRIGHT", 10, 0)
+    else
+        helpWin:SetPoint("CENTER", UIParent, "CENTER")
+    end
+end
+
 function Help:Toggle()
     if not helpWin then helpWin = Build() end
     if helpWin:IsShown() then
         helpWin:Hide()
     else
+        PositionWindow()
         helpWin._showPage(pageIndex)
         helpWin:Show()
     end
@@ -266,6 +276,7 @@ end
 
 function Help:Open(n)
     if not helpWin then helpWin = Build() end
+    PositionWindow()
     helpWin._showPage(n or 1)
     helpWin:Show()
 end

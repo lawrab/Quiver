@@ -350,7 +350,7 @@ local function Build()
 
     local helpBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     helpBtn:SetSize(26, 22)
-    helpBtn:SetPoint("RIGHT", closeBtn, "LEFT", 2, 1)
+    helpBtn:SetPoint("RIGHT", closeBtn, "LEFT", 2, -4)
     helpBtn:SetText("?")
     helpBtn:SetScript("OnClick", function() Quiver.UI.Help:Toggle() end)
     helpBtn:SetScript("OnEnter", function(self)
