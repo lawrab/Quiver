@@ -19,7 +19,23 @@ end
 
 function Pet:Enable()
     Quiver:RegisterEvent("UNIT_PET", function(_, unit)
-        if unit == "player" then self:UpdateState() end
+        if unit ~= "player" then return end
+        local wasExists = self.exists
+        self:UpdateState()
+        -- Check food compatibility only on genuine pet summons, not on
+        -- PLAYER_ENTERING_WORLD where GetItemInfo returns nil before the
+        -- cache warms and would falsely clear a valid saved selection.
+        if self.exists and not wasExists and Quiver.db and Quiver.db.char.menuSelections.food then
+            local savedName = Quiver.db.char.menuSelections.food.name
+            local foods = self:GetSuitableFood()
+            local compatible = false
+            for _, food in ipairs(foods) do
+                if food.name == savedName then compatible = true; break end
+            end
+            if not compatible then
+                Quiver.db.char.menuSelections.food = nil
+            end
+        end
     end)
     self:UpdateState()
 
@@ -81,19 +97,6 @@ function Pet:UpdateState()
     end
     Quiver.UI.Sphere:UpdatePetIndicator()
     if self.exists ~= wasExists then
-        -- New pet appeared: if the saved food isn't in this pet's suitable food list
-        -- (different pet type), clear the selection so the player picks food for the new pet.
-        if self.exists and not wasExists and Quiver.db and Quiver.db.char.menuSelections.food then
-            local savedName = Quiver.db.char.menuSelections.food.name
-            local foods = self:GetSuitableFood()
-            local compatible = false
-            for _, food in ipairs(foods) do
-                if food.name == savedName then compatible = true; break end
-            end
-            if not compatible then
-                Quiver.db.char.menuSelections.food = nil
-            end
-        end
         Quiver.UI.Menus:RebuildFoodPicker()
     end
     if self.exists ~= wasExists or self.dead ~= wasDead then
