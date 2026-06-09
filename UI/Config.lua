@@ -348,6 +348,18 @@ local function Build()
     closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, 0)
     closeBtn:SetScript("OnClick", function() f:Hide() end)
 
+    local helpBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    helpBtn:SetSize(26, 22)
+    helpBtn:SetPoint("RIGHT", closeBtn, "LEFT", 2, 1)
+    helpBtn:SetText("?")
+    helpBtn:SetScript("OnClick", function() Quiver.UI.Help:Toggle() end)
+    helpBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Open Help")
+        GameTooltip:Show()
+    end)
+    helpBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
     -- ── Page tab buttons ───────────────────────────────────────────────────────
     local TAB_W   = math.floor(COL_W / 2) - 2
     local tabBtns = {}

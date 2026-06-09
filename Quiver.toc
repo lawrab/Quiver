@@ -2,7 +2,7 @@
 ## Title: Quiver
 ## Notes: Hunter class mod for TBC Anniversary - Necrosis-style circular sphere UI
 ## Author: lrabbets
-## Version: 0.5.0
+## Version: 0.6.2
 ## DefaultState: Enabled
 ## SavedVariables: QuiverDB
 ## X-Curse-Project-ID: 1554292
@@ -41,3 +41,4 @@ Modules\AutoShot.lua
 UI\Sphere.lua
 UI\Config.lua
 UI\Menus.lua
+UI\Help.lua
