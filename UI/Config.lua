@@ -31,7 +31,7 @@ local PAGE_H   = math.max(BIND_PAGE_H, MACROS_PAGE_H)   -- 336
 local PAGE_Y   = -(40 + TAB_BAR_H)                       -- where page content starts
 local PANEL_H  = 40 + TAB_BAR_H + PAGE_H + 46            -- 450
 
-local SHOTS = { "Aimed Shot", "Arcane Shot", "Concussive Shot", "Hunter's Mark", "Multi-Shot", "Steady Shot" }
+local SHOTS = { "Aimed Shot", "Arcane Shot", "Auto Shot", "Concussive Shot", "Hunter's Mark", "Multi-Shot", "Steady Shot" }
 
 local function MakeCycleControl(parent, keyLabel, options, initValue)
     local ARROW_W = 22

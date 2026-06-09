@@ -1012,31 +1012,53 @@ function Menus:UpdateBWMacro()
     end
 end
 
-function Menus:UpdateTankOrbitButton()
-    local btn = Menus._tankOrbitBtn
-    if not btn or InCombatLockdown() then return end
-    -- Find Growl in the pet action bar — GetPetActionInfo returns the texture
-    -- directly, unlike GetSpellInfo which returns nil for pet-only spells.
-    local growlSlot, growlIcon, growlOn
+-- Growl is a pet-only spell not in the player spellbook; GetSpellInfo returns
+-- nil for it. Use the known taunt icon as a fallback when no pet is present.
+local GROWL_FALLBACK_ICON = "Interface\\Icons\\Ability_Physical_Taunt"
+
+local function FindGrowlInfo()
     for i = 1, 10 do
         local name, tex, isToken, _, _, autoCastEnabled = GetPetActionInfo(i)
         if name == "Growl" then
-            growlSlot      = i
-            growlIcon      = (not isToken) and tex or nil
-            growlOn        = autoCastEnabled == true
-            break
+            return i, (not isToken) and tex or nil, autoCastEnabled == true
         end
     end
-    -- Treat the actual Growl autocast state as authoritative. This keeps
-    -- petTankMode in sync after pet summons (which reset the action bar to
-    -- defaults) and any manual toggles via the native pet bar.
+end
+
+-- Called on login / zone change (RebuildAll). Reads Growl as the source of
+-- truth to establish the initial petTankMode state, then wires the button.
+function Menus:UpdateTankOrbitButton()
+    local btn = Menus._tankOrbitBtn
+    if not btn or InCombatLockdown() then return end
+    local growlSlot, growlIcon, growlOn = FindGrowlInfo()
     if growlSlot and Quiver.db then
         Quiver.db.profile.petTankMode = growlOn
     end
-    if growlIcon then
-        btn:SetNormalTexture(growlIcon)
-        btn:SetPushedTexture(growlIcon)
+    local icon = growlIcon or GROWL_FALLBACK_ICON
+    btn:SetNormalTexture(icon)
+    btn:SetPushedTexture(icon)
+    if growlSlot then
+        btn:SetAttribute("type", "macro")
+        btn:SetAttribute("macrotext", "/click PetActionButton" .. growlSlot .. " RightButton")
+    else
+        btn:SetAttribute("type", nil)
+        btn:SetAttribute("macrotext", nil)
     end
+    local tex = btn:GetNormalTexture()
+    if tex then tex:SetDesaturated(not Quiver.db.profile.petTankMode) end
+    self:UpdateBWMacro()
+end
+
+-- Called on PET_BAR_UPDATE (mount / dismount). Pushes the stored petTankMode
+-- preference OUT to the button display and BW macro — does NOT read Growl back
+-- into petTankMode, so a mount/dismount cycle cannot overwrite the user's choice.
+function Menus:RefreshTankOrbitButton()
+    local btn = Menus._tankOrbitBtn
+    if not btn or InCombatLockdown() then return end
+    local growlSlot, growlIcon = FindGrowlInfo()
+    local icon = growlIcon or GROWL_FALLBACK_ICON
+    btn:SetNormalTexture(icon)
+    btn:SetPushedTexture(icon)
     if growlSlot then
         btn:SetAttribute("type", "macro")
         btn:SetAttribute("macrotext", "/click PetActionButton" .. growlSlot .. " RightButton")
@@ -1047,6 +1069,7 @@ function Menus:UpdateTankOrbitButton()
     local enabled = Quiver.db and Quiver.db.profile.petTankMode
     local tex = btn:GetNormalTexture()
     if tex then tex:SetDesaturated(not enabled) end
+    self:UpdateBWMacro()
 end
 
 function Menus:WriteManagedMacro(name, iconSpell, body)
@@ -1169,6 +1192,6 @@ function Menus:Initialize()
     local petBarFrame = CreateFrame("Frame")
     petBarFrame:RegisterEvent("PET_BAR_UPDATE")
     petBarFrame:SetScript("OnEvent", function()
-        Menus:UpdateTankOrbitButton()
+        Menus:RefreshTankOrbitButton()
     end)
 end

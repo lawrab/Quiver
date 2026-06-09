@@ -219,11 +219,16 @@ function Sphere:SetupMenuButtons(f)
             math.sin(rad) * radius)
         b:RegisterForClicks(keydown and "AnyDown" or "AnyUp")
 
-        -- Icon from spell, fallback to empty slot; store hint for later restore
+        -- Icon from spell; tank button uses Growl which is pet-only (GetSpellInfo
+        -- returns nil), so fall back to the taunt icon rather than an empty slot.
         local _, _, icon = GetSpellInfo(btn.spell)
         b.spellHint = btn.spell
-        b:SetNormalTexture(icon or "Interface\\Buttons\\UI-Quickslot2")
-        b:SetPushedTexture(icon or "Interface\\Buttons\\UI-Quickslot-Depress")
+        local fallback = (btn.name == "tank") and "Interface\\Icons\\Ability_Physical_Taunt"
+                         or "Interface\\Buttons\\UI-Quickslot2"
+        local fallbackPushed = (btn.name == "tank") and "Interface\\Icons\\Ability_Physical_Taunt"
+                               or "Interface\\Buttons\\UI-Quickslot-Depress"
+        b:SetNormalTexture(icon or fallback)
+        b:SetPushedTexture(icon or fallbackPushed)
         b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
 
         if btn.name == "aspects" then
@@ -264,7 +269,16 @@ function Sphere:SetupMenuButtons(f)
         if btn.name == "tank" then
             b:SetScript("PostClick", function(_, button)
                 if button == "LeftButton" then
-                    Quiver.Modules.Pet:ToggleTankMode()
+                    -- Read the actual Growl state AFTER the secure macro toggled it,
+                    -- rather than blindly flipping petTankMode. This correctly handles
+                    -- the out-of-sync case where Growl was reset by a pet re-summon
+                    -- but petTankMode still reflected the player's last explicit choice.
+                    local newGrowlOn = false
+                    for i = 1, 10 do
+                        local name, _, _, _, _, autoCastEnabled = GetPetActionInfo(i)
+                        if name == "Growl" then newGrowlOn = autoCastEnabled == true; break end
+                    end
+                    Quiver.Modules.Pet:SetTankMode(newGrowlOn)
                 elseif button == "RightButton" then
                     Quiver.UI.Menus:HideAll()
                 end
@@ -273,9 +287,13 @@ function Sphere:SetupMenuButtons(f)
                 local on = Quiver.db and Quiver.db.profile.petTankMode
                 GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
                 GameTooltip:AddLine("Tank Mode: " .. (on and "|cff00ff00ON|r" or "|cffff4444OFF|r"))
-                GameTooltip:AddLine(on and "Growl on  \xE2\x80\x93  BW includes Intimidation"
-                                       or "Growl off  \xE2\x80\x93  BW excludes Intimidation", 0.6, 0.6, 0.6)
-                GameTooltip:AddLine("Click to toggle", 0.4, 0.8, 1.0)
+                GameTooltip:AddLine(on and "Growl ON - BW includes Intimidation"
+                                       or "Growl OFF - BW excludes Intimidation", 0.6, 0.6, 0.6)
+                if IsMounted() then
+                    GameTooltip:AddLine("Not usable while mounted", 1.0, 0.5, 0.0)
+                else
+                    GameTooltip:AddLine("Click to toggle", 0.4, 0.8, 1.0)
+                end
                 GameTooltip:Show()
             end)
         elseif btn.name == "food" then
