@@ -46,6 +46,7 @@ read_globals = {
     -- Pet API
     "GetPetHappiness",
     "GetPetFoodTypes",
+    "GetPetActionInfo",
 
     -- Inventory / bag API
     "GetInventorySlotInfo",
@@ -59,6 +60,7 @@ read_globals = {
 
     -- Combat / state
     "InCombatLockdown",
+    "IsMounted",
     "GetTime",
     "GetCVarBool",
     "IsAltKeyDown",
@@ -132,5 +134,7 @@ files["tests/"] = {
         "GetTrackingTexture",
         "InCombatLockdown",
         "wipe",
+        "GetPetActionInfo",
+        "TogglePetAutocast",
     }
 }

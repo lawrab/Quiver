@@ -498,11 +498,12 @@ function Menus:ApplySelectionToTrigger(menu)
                     local otherCast = otherId or menu.otherSelected.spell
                     local otherName = type(otherCast) == "number" and GetSpellInfo(otherCast) or otherCast
                     if otherName then
-                        if current and current.name == name then
-                            macro = "/cast " .. otherName
-                        else
-                            macro = "/cast " .. name
-                        end
+                        -- /castsequence advances through the list on each press and resets at
+                        -- combat start.  ! prefix prevents toggling the aspect off if it happens
+                        -- to already be active.  [stance:N] does NOT work for hunter aspects
+                        -- (confirmed: aspects are not shapeshifts in TBC Anniversary's macro
+                        -- system), so this sequence is the only in-combat swap mechanism.
+                        macro = "/castsequence reset=combat !" .. otherName .. ", !" .. name
                         local badge = triggerBtn.swapBadge
                         if badge then
                             local badgeTarget = (current and current.name == name) and otherName or name

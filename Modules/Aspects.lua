@@ -67,7 +67,13 @@ function Aspects:DetectCurrentAspect()
         local _, _, _, spellID = GetShapeshiftFormInfo(formIndex)
         if spellID then
             local name = GetSpellInfo(spellID)
-            if name then self.current = ASPECTS_BY_NAME[name] end
+            if name then
+                self.current = ASPECTS_BY_NAME[name]
+                -- Cache form index by name so ApplySelectionToTrigger can build
+                -- a [stance:N] conditional without needing GetNumShapeshiftForms().
+                if not self.formIndex then self.formIndex = {} end
+                self.formIndex[name] = formIndex
+            end
         end
     end
 
@@ -85,8 +91,8 @@ function Aspects:DetectCurrentAspect()
 
     Quiver.UI.Sphere:UpdateColor()
 
-    -- SetNormalTexture is not combat-restricted; update the orbit button icon immediately
-    -- so it tracks the live aspect even during combat.
+    -- SetNormalTexture and Texture:SetTexture are not combat-restricted; update the orbit
+    -- button icon and swap badge immediately so they track the live aspect during combat.
     local triggerBtn = _G["QuiverBtn_aspects"]
     if triggerBtn and self.current then
         local _, _, icon = GetSpellInfo(self.current.name)
@@ -94,12 +100,27 @@ function Aspects:DetectCurrentAspect()
             triggerBtn:SetNormalTexture(icon)
             triggerBtn:SetPushedTexture(icon)
         end
+        local menu = Quiver.UI.Menus and Quiver.UI.Menus.menus and Quiver.UI.Menus.menus.aspects
+        local badge = triggerBtn.swapBadge
+        if badge and menu and menu.selected and menu.otherSelected then
+            local badgeTarget = (self.current.name == menu.selected.spell)
+                and menu.otherSelected.spell
+                or menu.selected.spell
+            local _, _, badgeIcon = GetSpellInfo(badgeTarget)
+            if badgeIcon then
+                badge:SetTexture(badgeIcon)
+                badge:Show()
+            else
+                badge:Hide()
+            end
+        end
     end
 
     -- SetAttribute is combat-restricted; defer macro/attribute update to out-of-combat.
     if not InCombatLockdown() and Quiver.UI.Menus and Quiver.UI.Menus.menus then
         Quiver.UI.Menus:ApplySelectionToTrigger(Quiver.UI.Menus.menus.aspects)
     end
+
 end
 
 function Aspects:GetCurrentColor()

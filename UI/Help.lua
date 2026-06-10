@@ -148,7 +148,6 @@ local PADDING   = 16
 local TITLE_H   = 40
 local NAV_H     = 36
 local CONTENT_W = WIN_W - PADDING * 2
-local CONTENT_H = WIN_H - TITLE_H - NAV_H - PADDING * 2
 
 local function Build()
     local f = CreateFrame("Frame", "QuiverHelpWindow", UIParent, "BackdropTemplate")
