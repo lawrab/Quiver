@@ -240,8 +240,10 @@ local function PopulateMenu(menu)
             b:SetPushedTexture(icon or "Interface\\Buttons\\UI-Quickslot-Depress")
             b._normalTex = b:GetNormalTexture()
 
-            -- Set secure cast macro for both left-click and right-click.
-            -- Left-click fires the cast first (secure), then PostClick runs SelectEntry.
+            -- Left-click: selection only (PostClick → SelectEntry); no secure cast.
+            -- Right-click: cast the spell immediately.
+            b:SetAttribute("type",      nil)
+            b:SetAttribute("macrotext", nil)
             if castTarget then
                 local macroText
                 if type(castTarget) == "number" then
@@ -251,19 +253,13 @@ local function PopulateMenu(menu)
                     macroText = "/cast " .. castTarget
                 end
                 if macroText then
-                    b:SetAttribute("type",       "macro")
-                    b:SetAttribute("macrotext",  macroText)
                     b:SetAttribute("type2",      "macro")
                     b:SetAttribute("macrotext2", macroText)
                 else
-                    b:SetAttribute("type",       nil)
-                    b:SetAttribute("macrotext",  nil)
                     b:SetAttribute("type2",      nil)
                     b:SetAttribute("macrotext2", nil)
                 end
             else
-                b:SetAttribute("type",       nil)
-                b:SetAttribute("macrotext",  nil)
                 b:SetAttribute("type2",      nil)
                 b:SetAttribute("macrotext2", nil)
             end
