@@ -41,6 +41,7 @@ end)
 -- Deferred attribute application: SetAttribute on secure frames from PostClick
 -- (after a secure action fired) can be silently blocked in TBC Classic.
 -- We write the pending menu here and apply it on the very next OnUpdate frame.
+local bwMacroPending = false  -- UpdateBWMacro was requested during combat; flush on PLAYER_REGEN_ENABLED
 local pendingSelectionMenu = nil
 local selectionTicker = CreateFrame("Frame")
 selectionTicker:Hide()   -- only active while a deferred attribute write is pending
@@ -240,10 +241,11 @@ local function PopulateMenu(menu)
             b:SetPushedTexture(icon or "Interface\\Buttons\\UI-Quickslot-Depress")
             b._normalTex = b:GetNormalTexture()
 
-            -- Left-click: selection only (PostClick → SelectEntry); no secure cast.
-            -- Right-click: cast the spell immediately.
-            b:SetAttribute("type",      nil)
-            b:SetAttribute("macrotext", nil)
+            -- Stings: left-click selects only (no accidental mid-fight cast).
+            -- All other menus: left-click casts immediately so mid-combat selection
+            -- works — SetAttribute is combat-locked so we can't update the trigger
+            -- button's right-click macro until after the fight ends.
+            local castOnLeft = menu.triggerName ~= "QuiverBtn_stings"
             if castTarget then
                 local macroText
                 if type(castTarget) == "number" then
@@ -253,13 +255,19 @@ local function PopulateMenu(menu)
                     macroText = "/cast " .. castTarget
                 end
                 if macroText then
+                    b:SetAttribute("type",       castOnLeft and "macro" or nil)
+                    b:SetAttribute("macrotext",  castOnLeft and macroText or nil)
                     b:SetAttribute("type2",      "macro")
                     b:SetAttribute("macrotext2", macroText)
                 else
+                    b:SetAttribute("type",       nil)
+                    b:SetAttribute("macrotext",  nil)
                     b:SetAttribute("type2",      nil)
                     b:SetAttribute("macrotext2", nil)
                 end
             else
+                b:SetAttribute("type",       nil)
+                b:SetAttribute("macrotext",  nil)
                 b:SetAttribute("type2",      nil)
                 b:SetAttribute("macrotext2", nil)
             end
@@ -319,7 +327,11 @@ local function PopulateMenu(menu)
                 b:SetScript("OnEnter", function(self)
                     GameTooltip:SetOwner(self, "ANCHOR_TOP")
                     GameTooltip:AddLine(label)
-                    GameTooltip:AddLine("Left-click: select for quick-cast", 0.6, 0.6, 0.6)
+                    if castOnLeft then
+                        GameTooltip:AddLine("Left-click: cast now", 0.6, 0.6, 0.6)
+                    else
+                        GameTooltip:AddLine("Left-click: select for quick-cast", 0.6, 0.6, 0.6)
+                    end
                     GameTooltip:AddLine("Right-click: cast now", 0.6, 0.6, 0.6)
                     GameTooltip:Show()
                 end)
@@ -1005,12 +1017,20 @@ end
 function Menus:BuildBWMacroBody()
     local lines = { "#showtooltip Bestial Wrath", "/cast Bestial Wrath" }
     if Quiver.db.profile.petTankMode then
-        lines[#lines+1] = "/cast [known:Intimidation] Intimidation"
+        -- Only attempt Intimidation when a hostile target exists; avoids a
+        -- visible "Invalid target" error when pressing BW with nothing targeted.
+        lines[#lines+1] = "/cast [exists,harm,nodead,known:Intimidation] Intimidation"
     end
     return table.concat(lines, "\n")
 end
 
 function Menus:UpdateBWMacro()
+    if InCombatLockdown() then
+        -- EditMacro is blocked in combat; defer until PLAYER_REGEN_ENABLED.
+        bwMacroPending = true
+        return
+    end
+    bwMacroPending = false
     if GetMacroIndexByName("Quiver: BW") > 0 then
         WriteMacro("Quiver: BW", "Bestial Wrath", self:BuildBWMacroBody())
     end
@@ -1164,7 +1184,7 @@ function Menus:Initialize()
     Quiver:RegisterEvent("PLAYER_REGEN_ENABLED", function()
         if rebuildPending then
             rebuildPending = false
-            Menus:RebuildAll()
+            Menus:RebuildAll()  -- RebuildAll → UpdateTankOrbitButton → UpdateBWMacro clears bwMacroPending
             Quiver.UI.Sphere:UpdateOnClick()
         else
             -- Refresh all menus: aspects swap macro tracks live aspect state, and any
@@ -1172,6 +1192,7 @@ function Menus:Initialize()
             for _, menu in pairs(Menus.menus) do
                 Menus:ApplySelectionToTrigger(menu)
             end
+            if bwMacroPending then Menus:UpdateBWMacro() end
         end
     end)
     Quiver:RegisterEvent("BAG_UPDATE", function()

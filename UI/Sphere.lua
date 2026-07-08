@@ -376,7 +376,7 @@ function Sphere:UpdateOnClick()
         end
         lines[#lines+1] = "/cast [nopet] Call Pet"
         if rcType == "spell" and rc ~= "none" then
-            lines[#lines+1] = "/cast [pet,nodead] " .. rc
+            lines[#lines+1] = "/cast [@pet,nodead] " .. rc
         elseif rcType == "macro" and (sp.rightMacro or "") ~= "" then
             -- Stop macro execution if pet is dead or missing so the user's
             -- configured macro doesn't fire alongside Revive/Call Pet.
